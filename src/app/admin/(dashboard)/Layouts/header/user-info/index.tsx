@@ -70,6 +70,21 @@ export function UserInfo() {
           
           setUser(newUserData);
           sessionStorage.setItem("admin_user_profile", JSON.stringify(newUserData));
+
+          // Sync authenticated user (including Google OAuth users) to public.users
+          fetch("/api/auth/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: authUser.id,
+              email: authUser.email,
+              fullName: newUserData.name,
+              avatarUrl: newUserData.img,
+              role: authUser.user_metadata?.role || "ADMIN",
+            }),
+          }).catch(() => {
+            // non-blocking sync
+          });
         }
       } catch (err) {
         logger.error('Unexpected error in UserInfo header fetch:', err);

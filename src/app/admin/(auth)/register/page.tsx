@@ -161,9 +161,19 @@ function RegisterPageContent() {
         router.push("/admin/dashboard");
         router.refresh();
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to create account.";
+        const rawMessage = err instanceof Error ? err.message : "Failed to create account.";
         logger.error("Registration error", err);
-        setError(message);
+        if (
+          rawMessage.toLowerCase().includes("already registered") ||
+          rawMessage.toLowerCase().includes("already exists") ||
+          rawMessage.toLowerCase().includes("user already registered")
+        ) {
+          setError(
+            "An account with this email already exists. If you previously signed in with Google or created an account, please sign in instead."
+          );
+        } else {
+          setError(rawMessage);
+        }
       } finally {
         setLoading(false);
       }
