@@ -5,6 +5,8 @@ import "@/styles/layout-utilities.css";
 import { inter, mulish, playfair } from "@/lib/fonts";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "next-themes";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "TrizenAI Photo Sharing Platform",
@@ -25,6 +27,8 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
           <Toaster position="top-right" richColors />
+          <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>
