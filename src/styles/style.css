@@ -1,0 +1,258 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./satoshi.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* --- Brand Colors (RAYVOY Palette) --- */
+  --color-brand-lavenderGrey: #8895B3;
+  --color-brand-softPeriwinkle: #8E94F2;
+  --color-brand-darksoftPeriwinkle: #595c96;
+  --color-brand-wisteriaBlue: #9FA0FF;
+  --color-brand-mauve: #BBADFF;
+  --color-brand-darkmauve: #846df7;
+  --color-brand-cream: #FAF9F7;
+  --color-brand-nearBlack: #1A1A1A;
+  --color-brand-warmGray: #6B6B6B;
+  --color-brand-lightGray: #E8E8E8;
+  --color-brand-deepPurple: #403165;
+  --color-brand-peach: #f8efe9;
+  --color-brand-amethyst: #7c5cbf;
+  --color-brand-popupBg: #EDEDED;
+
+  /* --- Fonts --- */
+  --font-sans: var(--font-inter), sans-serif;
+  --font-mulish: var(--font-mulish), sans-serif;
+  --font-playfair: var(--font-playfair), serif;
+  --font-satoshi: "Satoshi", sans-serif;
+
+  /* --- Breakpoints --- */
+  --breakpoint-2xsm: 375px;
+  --breakpoint-xsm: 425px;
+  --breakpoint-3xl: 2000px;
+
+  /* --- iOS & Admin Theme Tokens --- */
+  --color-ios-light-blue: #007AFF;
+  --color-ios-light-green: #34C759;
+  --color-ios-light-indigo: #5856D6;
+  --color-ios-light-orange: #FF9500;
+  --color-ios-light-pink: #FF2D55;
+  --color-ios-light-purple: #AF52DE;
+  --color-ios-light-red: #FF3B30;
+  --color-ios-light-teal: #5AC8FA;
+  --color-ios-light-yellow: #FFCC00;
+
+  --color-ios-light-gray-1: #8E8E93;
+  --color-ios-light-gray-2: #AEAEB2;
+  --color-ios-light-gray-3: #C7C7CC;
+  --color-ios-light-gray-4: #D1D1D6;
+  --color-ios-light-gray-5: #E5E5EA;
+  --color-ios-light-gray-6: #F2F2F7;
+
+  --color-ios-dark-blue: #0A84FF;
+  --color-ios-dark-green: #30D158;
+  --color-ios-dark-indigo: #5E5CE6;
+  --color-ios-dark-orange: #FF9F0A;
+  --color-ios-dark-pink: #FF375F;
+  --color-ios-dark-purple: #BF5AF2;
+  --color-ios-dark-red: #FF453A;
+  --color-ios-dark-teal: #64D2FF;
+  --color-ios-dark-yellow: #FFD60A;
+
+  --color-ios-dark-gray-1: #8E8E93;
+  --color-ios-dark-gray-2: #636366;
+  --color-ios-dark-gray-3: #48484A;
+  --color-ios-dark-gray-4: #3A3A3C;
+  --color-ios-dark-gray-5: #2C2C2E;
+  --color-ios-dark-gray-6: #1C1C1E;
+
+  /* Admin palette utilities */
+  --color-primary: #8E94F2;
+  --color-stroke: var(--color-ios-light-gray-4);
+  --color-stroke-dark: rgba(255, 255, 255, 0.2);
+  --color-border: #EBE8E3;
+  --color-border-dark: rgba(255, 255, 255, 0.16);
+
+  --color-dark: #111928;
+  --color-dark-2: #24242A;
+  --color-dark-3: #2C2C34;
+  --color-dark-4: #3A3A44;
+  --color-dark-5: var(--color-ios-dark-gray-3);
+  --color-dark-6: var(--color-ios-dark-gray-2);
+  --color-dark-7: var(--color-ios-dark-gray-1);
+  --color-dark-8: var(--color-ios-dark-gray-1);
+
+  --color-gray: var(--color-ios-light-gray-1);
+  --color-gray-dark: #1E1E24;
+
+  --color-gray-1: #FFFFFF;
+  --color-gray-2: var(--color-ios-light-gray-6);
+  --color-gray-3: var(--color-ios-light-gray-5);
+  --color-gray-4: var(--color-ios-light-gray-4);
+  --color-gray-5: var(--color-ios-light-gray-3);
+  --color-gray-6: var(--color-ios-light-gray-2);
+  --color-gray-7: var(--color-ios-light-gray-1);
+
+  --color-green: var(--color-ios-light-green);
+  --color-green-dark: var(--color-ios-dark-green);
+  --color-red: var(--color-ios-light-red);
+  --color-red-dark: var(--color-ios-dark-red);
+
+  /* Spacing Scale */
+  --spacing-4_5: 1.125rem;
+  --spacing-5_5: 1.375rem;
+  --spacing-6_5: 1.625rem;
+  --spacing-7_5: 1.875rem;
+  --spacing-8_5: 2.125rem;
+  --spacing-9_5: 2.375rem;
+  --spacing-10_5: 2.625rem;
+  --spacing-11_5: 2.875rem;
+  --spacing-12_5: 3.125rem;
+  --spacing-21_5: 5.375rem;
+
+  /* Shadows */
+  --shadow-default: 0px 4px 7px 0px rgba(0, 0, 0, 0.14);
+  --shadow-card: 0px 1px 2px 0px rgba(0, 0, 0, 0.12);
+  --shadow-card-2: 0px 8px 13px -3px rgba(0, 0, 0, 0.07);
+  --shadow-1: 0px 1px 2px 0px rgba(84, 87, 118, 0.12);
+  --shadow-2: 0px 2px 3px 0px rgba(84, 87, 118, 0.15);
+  --shadow-3:
+    0px 8px 8.466px 0px rgba(113, 116, 152, 0.05),
+    0px 8px 16.224px 0px rgba(113, 116, 152, 0.07),
+    0px 18px 31px 0px rgba(113, 116, 152, 0.1);
+  --drop-shadow-card: 0px 8px 13px rgba(0, 0, 0, 0.07);
+}
+
+@utility text-dark-5 {
+  color: #6B7280;
+}
+
+@utility text-body-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+@layer base {
+  .admin-font-scale {
+    font-size: clamp(0.9rem, 0.82rem + 0.4vw, 1rem);
+    line-height: 1.55;
+  }
+
+  @media (min-width: 1024px) {
+    .admin-font-scale {
+      font-size: clamp(0.95rem, 0.88rem + 0.25vw, 1.05rem);
+    }
+  }
+
+  /* Hide number input spin buttons */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+/* Background for admin layout */
+body:has([data-admin-layout]) {
+  background-color: #E5E7EB;
+  font-family: var(--font-satoshi);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.dark body:has([data-admin-layout]),
+body:has([data-admin-layout]):is(.dark *) {
+  background-color: #121215;
+  --color-border: rgba(255, 255, 255, 0.16);
+}
+
+:root.dark,
+.dark {
+  --color-border: rgba(255, 255, 255, 0.16);
+}
+
+html:has([data-admin-layout]) {
+  height: 100vh;
+  overflow: hidden;
+}
+
+@layer utilities {
+  /* Scrollbar utilities */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    scrollbar-gutter: stable;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .custom-scrollbar {
+    @apply overflow-auto;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply relative flex-1 rounded-full bg-neutral-200/40 dark:bg-stroke-dark;
+  }
+
+  .scrollbar-thin-x {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: #64748b #e2e8f0 !important;
+  }
+
+  .scrollbar-thin-x::-webkit-scrollbar {
+    height: 8px !important;
+    display: block !important;
+  }
+
+  .scrollbar-thin-x::-webkit-scrollbar-track {
+    background: #e2e8f0 !important;
+    border-radius: 9999px !important;
+  }
+
+  .dark .scrollbar-thin-x::-webkit-scrollbar-track {
+    background: #1e293b !important;
+  }
+
+  .scrollbar-thin-x::-webkit-scrollbar-thumb {
+    background: #64748b !important;
+    border-radius: 9999px !important;
+  }
+
+  .dark .scrollbar-thin-x::-webkit-scrollbar-thumb {
+    background: #94a3b8 !important;
+  }
+
+  .scrollbar-thin-x::-webkit-scrollbar-thumb:hover {
+    background: #475569 !important;
+  }
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+  @apply appearance-none;
+}

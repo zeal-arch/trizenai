@@ -1,0 +1,111 @@
+/**
+ * Professional Layout Utilities
+ * Prevents overflow issues with proper flex/grid constraints
+ */
+
+/* Flex Container Base - Prevents child overflow */
+.flex-container-safe {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Flex Child Base - Allows shrinking below content size */
+.flex-child-safe {
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Scrollable Flex Container - Vertical scroll only */
+.flex-scroll-y {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* Scrollable Flex Container - Horizontal scroll only */
+.flex-scroll-x {
+    display: flex;
+    min-height: 0;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* Grid Container Safe - Prevents grid overflow */
+.grid-container-safe {
+    display: grid;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Full Height Flex Layout */
+.flex-layout-full {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Constrained Content Wrapper */
+.content-wrapper-safe {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Card Container with Overflow Protection */
+.card-container-safe {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Hidden Scrollbar (while maintaining scroll functionality) */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+/* Responsive Grid - Auto-fit with minimum card size */
+.responsive-grid-safe {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+    gap: 1rem;
+    min-width: 0;
+}
+
+/* Text Truncation Utilities */
+.text-truncate-safe {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.text-clamp-2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.text-clamp-3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    word-break: break-word;
+}
