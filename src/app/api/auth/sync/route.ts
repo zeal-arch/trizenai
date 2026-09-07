@@ -28,20 +28,26 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (existingUser) {
-      // Update avatar or name if newly provided
+      // Preserve existing user role - do NOT overwrite role
+      const updateData: Record<string, unknown> = {
+        updatedAt: new Date().toISOString(),
+      };
+      if (fullName && !existingUser.fullName) updateData.fullName = fullName;
+      if (avatarUrl && !existingUser.avatarUrl) updateData.avatarUrl = avatarUrl;
+
       const { data: updatedUser, error: updateErr } = await supabase
         .from("users")
-        .update({
-          fullName: existingUser.fullName || name,
-          avatarUrl: avatarUrl || existingUser.avatarUrl,
-          updatedAt: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq("id", existingUser.id)
         .select()
-        .single();
+        .maybeSingle();
 
-      if (updateErr) throw updateErr;
-      return NextResponse.json({ success: true, user: updatedUser });
+      if (updateErr) {
+        console.error("Error updating existing user in /api/auth/sync:", updateErr);
+        // Fallback return existingUser without throwing 500
+        return NextResponse.json({ success: true, user: existingUser });
+      }
+      return NextResponse.json({ success: true, user: updatedUser || existingUser });
     }
 
     // 2. Create new user record
@@ -59,12 +65,16 @@ export async function POST(req: NextRequest) {
       .from("users")
       .insert([newUser])
       .select()
-      .single();
+      .maybeSingle();
 
-    if (createErr) throw createErr;
+    if (createErr) {
+      console.error("Error creating user in /api/auth/sync:", createErr);
+      throw createErr;
+    }
 
     return NextResponse.json({ success: true, user: createdUser });
   } catch (error: unknown) {
+    console.error("Catch block in /api/auth/sync:", error);
     const message = error instanceof Error ? error.message : "Failed to sync user.";
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -18,11 +18,13 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Label } from "@/components/label";
 import { Textarea } from "@/components/textarea";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
 import { LocalPhotoUploader, LocalPhotoItem } from "./_components/local-photo-uploader";
 
 export default function CreateEventPage() {
   const router = useRouter();
+  const { isTeamMember, loading: authLoading } = useCurrentUser();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
@@ -32,6 +34,22 @@ export default function CreateEventPage() {
   const [coverPhotoId, setCoverPhotoId] = useState<string>("");
   const [localPhotos, setLocalPhotos] = useState<LocalPhotoItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && isTeamMember) {
+      toast.error("Access Restricted: Creating events is reserved for Team Admins.");
+      router.replace("/admin/events");
+    }
+  }, [authLoading, isTeamMember, router]);
+
+  if (authLoading || isTeamMember) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+      </div>
+    );
+  }
+
 
   // Active cover photo item
   const selectedCoverPhoto = localPhotos.find((p) => p.id === coverPhotoId) || localPhotos[0];

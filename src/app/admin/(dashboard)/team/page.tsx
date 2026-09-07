@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Mail,
@@ -10,6 +11,9 @@ import {
   Trash2,
   UserPlus,
   Camera,
+  Copy,
+  Check,
+  KeyRound,
 } from "lucide-react";
 import Image from "next/image";
 import { Breadcrumb } from "@/components/breadcrumb";
@@ -19,6 +23,7 @@ import { Label } from "@/components/label";
 import { Badge } from "@/components/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/dialog";
 import { ConfirmDialog } from "@/app/admin/components/ConfirmDialog";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -43,19 +48,26 @@ const DEFAULT_AVATARS = [
 ];
 
 export default function TeamPage() {
+  const router = useRouter();
+  const { isTeamMember, loading: authLoading } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
-  const [team, setTeam] = useState<TeamUser[]>([
-    {
-      id: "7f55215b-06c9-44f3-9667-69f863393593",
-      fullName: "Lead Administrator",
-      email: "admin@trizen-ai.com",
-      role: "ADMIN",
-      avatarUrl: "/image/user/user-03.png",
-      assignedEventsCount: 3,
-      uploadedPhotosCount: 42,
-      joinedDate: "Sep 2026",
-    },
-  ]);
+  const [team, setTeam] = useState<TeamUser[]>([]);
+
+  useEffect(() => {
+    if (!authLoading && isTeamMember) {
+      toast.error("Access Restricted: Team management is reserved for Team Admins.");
+      router.replace("/admin/events");
+    }
+  }, [authLoading, isTeamMember, router]);
+
+  if (authLoading || isTeamMember) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+      </div>
+    );
+  }
+
 
   const loadTeam = async () => {
     try {
@@ -85,6 +97,20 @@ export default function TeamPage() {
 
   // Delete User Dialog State
   const [userToDelete, setUserToDelete] = useState<TeamUser | null>(null);
+
+  // Credentials Modal State (shown after member is added)
+  interface NewCredentials { email: string; tempPassword: string; fullName: string; }
+  const [newCredentials, setNewCredentials] = useState<NewCredentials | null>(null);
+  const [credCopied, setCredCopied] = useState(false);
+
+  const copyCredentials = () => {
+    if (!newCredentials) return;
+    const text = `Login URL: ${window.location.origin}/admin/login\nEmail: ${newCredentials.email}\nPassword: ${newCredentials.tempPassword}`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCredCopied(true);
+      setTimeout(() => setCredCopied(false), 2500);
+    });
+  };
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +146,15 @@ export default function TeamPage() {
       setNewEmail("");
       setNewRole("TEAM_MEMBER");
       setNewAvatar(DEFAULT_AVATARS[0]);
+
+      // Show generated credentials
+      if (data.tempPassword) {
+        setNewCredentials({
+          email: data.user.email,
+          tempPassword: data.tempPassword,
+          fullName: data.user.fullName,
+        });
+      }
 
       toast.success(`Added ${data.user.fullName} to the team successfully!`);
     } catch (err: unknown) {
@@ -297,7 +332,7 @@ export default function TeamPage() {
               <span>Add New Team Member</span>
             </DialogTitle>
             <DialogDescription className="text-xs text-dark-5 dark:text-dark-6">
-              Invite a photographer or co-admin to collaborate on event photo uploads.
+        Invite a photographer or co-admin. Login credentials will be generated automatically.
             </DialogDescription>
           </DialogHeader>
 
@@ -404,6 +439,53 @@ export default function TeamPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Credentials Display Modal ───────────────────────────────────────── */}
+      <Dialog open={!!newCredentials} onOpenChange={(open) => !open && setNewCredentials(null)}>
+        <DialogContent className="max-w-sm rounded-2xl border border-[#EBE8E3] bg-white p-6 shadow-2xl dark:border-white/15 dark:bg-gray-dark">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <KeyRound className="size-4 text-primary" />
+              Login Credentials Generated
+            </DialogTitle>
+            <DialogDescription className="text-xs text-dark-5 dark:text-dark-6">
+              Share these credentials with <strong>{newCredentials?.fullName}</strong>. They should change their password after first login.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 rounded-xl border border-[#EBE8E3] dark:border-white/15 bg-gray-50 dark:bg-dark-2 p-4 space-y-2.5 font-mono text-xs">
+            <div>
+              <span className="text-dark-5 uppercase tracking-wider text-[10px]">Login URL</span>
+              <p className="text-gray-900 dark:text-white font-medium mt-0.5">{typeof window !== "undefined" ? window.location.origin : ""}/admin/login</p>
+            </div>
+            <div>
+              <span className="text-dark-5 uppercase tracking-wider text-[10px]">Email</span>
+              <p className="text-gray-900 dark:text-white font-medium mt-0.5">{newCredentials?.email}</p>
+            </div>
+            <div>
+              <span className="text-dark-5 uppercase tracking-wider text-[10px]">Temporary Password</span>
+              <p className="text-primary font-bold mt-0.5 tracking-widest">{newCredentials?.tempPassword}</p>
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4 flex gap-2">
+            <Button
+              variant="outline"
+              onClick={copyCredentials}
+              className="flex-1 rounded-full border-[#EBE8E3] dark:border-white/15 text-xs h-9 gap-1.5"
+            >
+              {credCopied ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+              {credCopied ? "Copied!" : "Copy Credentials"}
+            </Button>
+            <Button
+              onClick={() => setNewCredentials(null)}
+              className="flex-1 rounded-full bg-primary hover:bg-primary/90 text-white text-xs h-9 font-semibold"
+            >
+              Done
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

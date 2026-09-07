@@ -2,17 +2,22 @@
 
 import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   UploadCloud,
   Lock,
   Filter,
+  User,
+  Layers,
+  ExternalLink,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Button } from "@/components/button";
 import { PhotoGrid } from "@/app/admin/features/photos/photo-grid";
 import { BulkUploadModal } from "@/app/admin/features/photos/bulk-upload-modal";
 import { GalleryPublishModal } from "@/app/admin/features/galleries/gallery-publish-modal";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import type { PhotoItem } from "@/types";
 import { toast } from "sonner";
 
@@ -22,81 +27,82 @@ export default function EventPhotosPage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = use(params);
+  const router = useRouter();
+  const { user, isAdmin, isTeamMember } = useCurrentUser();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
+  const [viewTab, setViewTab] = useState<"all" | "my_uploads">("all");
   const [filterSelectedOnly, setFilterSelectedOnly] = useState(false);
   const [eventTitle, setEventTitle] = useState("Event Photo Gallery");
+  const [gallerySlug, setGallerySlug] = useState<string | null>(null);
+  const [loadingPhotos, setLoadingPhotos] = useState(true);
 
-  // Sample photo items for initial state
-  const [photos, setPhotos] = useState<PhotoItem[]>([
-    {
-      id: "photo-1",
-      eventId,
-      uploadedBy: "admin-1",
-      publicId: "samples/gala-1",
-      url: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=1200&auto=format&fit=crop&q=80",
-      secureUrl: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=1200&auto=format&fit=crop&q=80",
-      thumbnailUrl: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=400&auto=format&fit=crop&q=80",
-      filename: "Gala_Opening_Keynote.jpg",
-      fileSize: 4200000,
-      width: 4000,
-      height: 2667,
-      isSelected: true,
-      tags: ["keynote", "stage"],
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: "photo-2",
-      eventId,
-      uploadedBy: "photographer-1",
-      publicId: "samples/gala-2",
-      url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&auto=format&fit=crop&q=80",
-      secureUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&auto=format&fit=crop&q=80",
-      thumbnailUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&auto=format&fit=crop&q=80",
-      filename: "Audience_Clapping.jpg",
-      fileSize: 3800000,
-      width: 4000,
-      height: 2667,
-      isSelected: true,
-      tags: ["audience"],
-      createdAt: new Date().toISOString(),
-    },
-  ]);
-
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(photos.filter((p) => p.isSelected).map((p) => p.id))
-  );
+  // Photo list state
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const fetchEventData = useCallback(async () => {
     try {
+      setLoadingPhotos(true);
       // 1. Fetch Event Info
       const eventRes = await fetch(`/api/events/${eventId}`);
+      if (eventRes.status === 403) {
+        toast.error("Access Denied: You are not assigned to this event.");
+        router.replace("/admin/events");
+        return;
+      }
+      if (eventRes.status === 401) {
+        toast.error("Please log in to view this event.");
+        router.replace("/admin/login");
+        return;
+      }
       if (eventRes.ok) {
         const eventData = await eventRes.json();
         if (eventData.event?.title) {
           setEventTitle(eventData.event.title);
         }
+        if (eventData.event?.gallery?.slug) {
+          setGallerySlug(eventData.event.gallery.slug);
+        }
       }
 
       // 2. Fetch Photos
       const photosRes = await fetch(`/api/events/${eventId}/photos`);
+      if (photosRes.status === 403) {
+        toast.error("Access Denied: You are not assigned to this event.");
+        router.replace("/admin/events");
+        return;
+      }
       if (photosRes.ok) {
         const photosData = await photosRes.json();
-        if (photosData.photos && photosData.photos.length > 0) {
+        if (photosData.photos) {
           setPhotos(photosData.photos);
-          setSelectedIds(new Set(photosData.photos.filter((p: PhotoItem) => p.isSelected).map((p: PhotoItem) => p.id)));
+          setSelectedIds(
+            new Set(
+              photosData.photos
+                .filter((p: PhotoItem) => p.isSelected)
+                .map((p: PhotoItem) => p.id)
+            )
+          );
         }
       }
     } catch {
       // keep fallback
+    } finally {
+      setLoadingPhotos(false);
     }
-  }, [eventId]);
+  }, [eventId, router]);
 
   useEffect(() => {
     fetchEventData();
   }, [fetchEventData]);
 
   const toggleSelectPhoto = async (photo: PhotoItem) => {
+    if (!isAdmin) {
+      toast.error("Permission Denied: Only Team Admins can curate gallery photos.");
+      return;
+    }
+
     const nextSelected = !photo.isSelected;
 
     setSelectedIds((prev) => {
@@ -114,7 +120,7 @@ export default function EventPhotosPage({
     );
 
     try {
-      await fetch(`/api/events/${eventId}/photos`, {
+      const res = await fetch(`/api/events/${eventId}/photos`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -122,6 +128,14 @@ export default function EventPhotosPage({
           isSelected: nextSelected,
         }),
       });
+
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || "Failed to update curation");
+        fetchEventData();
+        return;
+      }
+
       if (nextSelected) {
         toast.success(`Selected for gallery: ${photo.filename}`);
       } else {
@@ -132,13 +146,46 @@ export default function EventPhotosPage({
     }
   };
 
-  const displayedPhotos = filterSelectedOnly
-    ? photos.filter((p) => selectedIds.has(p.id))
-    : photos;
+  const handleDeletePhoto = async (photo: PhotoItem) => {
+    try {
+      const res = await fetch(`/api/events/${eventId}/photos`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photoIds: [photo.id],
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || "Failed to delete photo");
+        return;
+      }
+
+      setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(photo.id);
+        return next;
+      });
+
+      toast.success(`Deleted photo ${photo.filename}`);
+    } catch {
+      toast.error("Failed to delete photo.");
+    }
+  };
+
+  const myPhotos = user ? photos.filter((p) => p.uploadedBy === user.id) : [];
+
+  // Filter based on tab and curation filter
+  let displayedPhotos = viewTab === "my_uploads" ? myPhotos : photos;
+  if (filterSelectedOnly && isAdmin) {
+    displayedPhotos = displayedPhotos.filter((p) => selectedIds.has(p.id));
+  }
 
   return (
     <div className="space-y-6">
-      <Breadcrumb pageName="Photo Curation Workspace" />
+      <Breadcrumb pageName={isTeamMember ? "Event Photos & Uploads" : "Photo Curation Workspace"} />
 
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -154,10 +201,13 @@ export default function EventPhotosPage({
           </Link>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Photo Curation & Uploads
+              {isTeamMember ? "Upload & Review Photos" : "Photo Curation & Uploads"}
             </h1>
             <p className="text-xs text-dark-5 dark:text-dark-6">
-              Event ID: <span className="font-mono">{eventId.slice(0, 8)}...</span> · Review uploads, select approved photos, and publish customer galleries.
+              Event: <strong className="text-gray-900 dark:text-white">{eventTitle}</strong> ·{" "}
+              {isTeamMember
+                ? "Upload your photography for this event and review your submissions."
+                : "Review uploads, select approved photos, and publish customer galleries."}
             </p>
           </div>
         </div>
@@ -172,42 +222,84 @@ export default function EventPhotosPage({
             Upload Photos
           </Button>
 
-          <Button
-            onClick={() => setIsPublishOpen(true)}
-            className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-full px-5 py-2 text-xs shadow-md shadow-primary/20 flex items-center gap-2"
-          >
-            <Lock className="size-4" />
-            Publish Gallery ({selectedIds.size})
-          </Button>
+          {isAdmin && gallerySlug && (
+            <a
+              href={`/gallery/${gallerySlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-full border border-[#EBE8E3] dark:border-white/15 text-xs font-medium hover:border-primary hover:text-primary transition"
+            >
+              <ExternalLink className="size-3.5" />
+              View Gallery
+            </a>
+          )}
+
+          {isAdmin && (
+            <Button
+              onClick={() => setIsPublishOpen(true)}
+              className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-full px-5 py-2 text-xs shadow-md shadow-primary/20 flex items-center gap-2"
+            >
+              <Lock className="size-4" />
+              {gallerySlug ? `Update Gallery (${selectedIds.size})` : `Publish Gallery (${selectedIds.size})`}
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Filter and stats bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EBE8E3] bg-white p-4 shadow-xs dark:border-white/15 dark:bg-gray-dark">
-        <div className="flex items-center gap-4 text-xs">
-          <span className="text-dark-5">
-            Total Photos: <strong className="text-gray-900 dark:text-white">{photos.length}</strong>
-          </span>
-          <span className="text-dark-5">·</span>
-          <span className="text-emerald-600 font-medium">
-            Curated / Selected: <strong>{selectedIds.size}</strong>
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant={filterSelectedOnly ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterSelectedOnly(!filterSelectedOnly)}
-            className={`rounded-full text-xs h-8 px-3 gap-1.5 transition ${
-              filterSelectedOnly
-                ? "bg-primary text-white"
-                : "border-[#EBE8E3] dark:border-white/15 text-dark-5"
+        {/* Tab selection */}
+        <div className="flex items-center gap-1.5 p-1 bg-gray-100 dark:bg-dark-2 rounded-xl">
+          <button
+            type="button"
+            onClick={() => setViewTab("all")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              viewTab === "all"
+                ? "bg-white dark:bg-dark-3 text-primary shadow-xs"
+                : "text-dark-5 hover:text-dark dark:hover:text-white"
             }`}
           >
-            <Filter className="size-3" />
-            {filterSelectedOnly ? "Showing Selected Only" : "Show Selected Only"}
-          </Button>
+            <Layers className="size-3.5" />
+            All Event Photos ({photos.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewTab("my_uploads")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+              viewTab === "my_uploads"
+                ? "bg-white dark:bg-dark-3 text-primary shadow-xs"
+                : "text-dark-5 hover:text-dark dark:hover:text-white"
+            }`}
+          >
+            <User className="size-3.5" />
+            My Uploads ({myPhotos.length})
+          </button>
+        </div>
+
+        {/* Right side stats & curation filter (Admin Only) */}
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <>
+              <div className="hidden sm:flex items-center gap-2 text-xs text-emerald-600 font-medium">
+                <span>Curated for Gallery:</span>
+                <strong>{selectedIds.size}</strong>
+              </div>
+
+              <Button
+                variant={filterSelectedOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilterSelectedOnly(!filterSelectedOnly)}
+                className={`rounded-full text-xs h-8 px-3 gap-1.5 transition ${
+                  filterSelectedOnly
+                    ? "bg-primary text-white"
+                    : "border-[#EBE8E3] dark:border-white/15 text-dark-5"
+                }`}
+              >
+                <Filter className="size-3" />
+                {filterSelectedOnly ? "Showing Curated Only" : "Show Curated Only"}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -215,7 +307,11 @@ export default function EventPhotosPage({
       <PhotoGrid
         photos={displayedPhotos}
         selectedIds={selectedIds}
-        onToggleSelect={toggleSelectPhoto}
+        isLoading={loadingPhotos}
+        canSelect={isAdmin}
+        canDelete={true}
+        onToggleSelect={isAdmin ? toggleSelectPhoto : undefined}
+        onDelete={handleDeletePhoto}
       />
 
       {/* Modals */}
@@ -231,18 +327,28 @@ export default function EventPhotosPage({
         }}
       />
 
-      <GalleryPublishModal
-        open={isPublishOpen}
-        onOpenChange={setIsPublishOpen}
-        eventId={eventId}
-        eventTitle={eventTitle}
-        selectedCount={selectedIds.size}
-        onSuccess={() => {
-          setIsPublishOpen(false);
-          fetchEventData();
-          toast.success("Customer gallery published successfully!");
-        }}
-      />
+      {isAdmin && (
+        <GalleryPublishModal
+          open={isPublishOpen}
+          onOpenChange={setIsPublishOpen}
+          eventId={eventId}
+          eventTitle={eventTitle}
+          selectedCount={selectedIds.size}
+          onSuccess={({ slug, pin }) => {
+            setIsPublishOpen(false);
+            setGallerySlug(slug);
+            fetchEventData();
+            const galleryUrl = `${window.location.origin}/gallery/${slug}`;
+            // Copy to clipboard and show the credentials
+            navigator.clipboard.writeText(`Gallery URL: ${galleryUrl}\nPIN: ${pin}`).catch(() => {});
+            toast.success(
+              `Gallery published! URL: ${galleryUrl} · PIN: ${pin} — copied to clipboard.`,
+              { duration: 8000 }
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
+

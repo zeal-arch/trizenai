@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Lock,
   KeyRound,
@@ -14,6 +15,7 @@ import {
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Button } from "@/components/button";
 import { Badge } from "@/components/badge";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
 
 interface GalleryItem {
@@ -29,20 +31,26 @@ interface GalleryItem {
 }
 
 export default function GalleriesPage() {
+  const router = useRouter();
+  const { isTeamMember, loading: authLoading } = useCurrentUser();
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [galleries, setGalleries] = useState<GalleryItem[]>([
-    {
-      id: "00000000-0000-0000-0000-000000000001",
-      title: "Annual Gala Official Highlights",
-      eventTitle: "TrizenAI Annual Gala 2026",
-      slug: "gala-2026",
-      pin: "489210",
-      photoCount: 28,
-      viewCount: 142,
-      isPublished: true,
-      publishedAt: "2026-09-16",
-    },
-  ]);
+  const [galleries, setGalleries] = useState<GalleryItem[]>([]);
+
+  useEffect(() => {
+    if (!authLoading && isTeamMember) {
+      toast.error("Access Restricted: Customer Galleries are managed by Team Admins.");
+      router.replace("/admin/events");
+    }
+  }, [authLoading, isTeamMember, router]);
+
+  if (authLoading || isTeamMember) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+      </div>
+    );
+  }
+
 
   useEffect(() => {
     async function loadGalleries() {

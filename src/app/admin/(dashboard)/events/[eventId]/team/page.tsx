@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Users,
@@ -18,6 +19,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Badge } from "@/components/badge";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
 
 interface TeamMember {
@@ -36,36 +38,40 @@ export default function EventTeamPage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = use(params);
+  const router = useRouter();
+  const { isTeamMember, loading: authLoading } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
-    {
-      id: "7f55215b-06c9-44f3-9667-69f863393593",
-      fullName: "Lead Administrator",
-      email: "admin@trizen-ai.com",
-      role: "ADMIN",
-      avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      isAssigned: true,
-      uploadedCount: 42,
-    },
-  ]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && isTeamMember) {
+      toast.error("Access Restricted: Team management is reserved for Team Admins.");
+      router.replace("/admin/events");
+    }
+  }, [authLoading, isTeamMember, router]);
 
   const loadEventTeam = useCallback(async () => {
     try {
+      setLoading(true);
       const res = await fetch(`/api/events/${eventId}/team`);
       if (res.ok) {
         const data = await res.json();
-        if (data.members && data.members.length > 0) {
+        if (data.members) {
           setTeamMembers(data.members);
         }
       }
     } catch {
       // keep fallback
+    } finally {
+      setLoading(false);
     }
   }, [eventId]);
 
   useEffect(() => {
     loadEventTeam();
   }, [loadEventTeam]);
+
 
   const toggleAssignment = async (memberId: string) => {
     const target = teamMembers.find((m) => m.id === memberId);

@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/permissions/require-role";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/team - List all users / team members with assigned events and photo counts
+// GET /api/team - List all users / team members with assigned events and photo counts (ADMIN ONLY)
 export async function GET() {
   try {
+    const authResult = await requireRole(["ADMIN"], "view team members directory");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const supabase = createAdminClient();
 
     // 1. Fetch users
@@ -55,9 +61,14 @@ export async function GET() {
   }
 }
 
-// POST /api/team - Add new team member / photographer
+// POST /api/team - Add new team member / photographer (ADMIN ONLY)
 export async function POST(req: NextRequest) {
   try {
+    const authResult = await requireRole(["ADMIN"], "add new team members");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const supabase = createAdminClient();
     const body = await req.json();
     const { fullName, email, role, avatarUrl } = body;
@@ -66,7 +77,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Full Name and Email are required." }, { status: 400 });
     }
 
-    const userId = `user-${Date.now()}`;
+    // Generate a secure temporary password
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    const rand = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    const tempPassword = `Trizen${rand}@${new Date().getFullYear()}`;
+
+    // 1. Create a real Supabase Auth account so the user can login
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: email.trim().toLowerCase(),
+      password: tempPassword,
+      email_confirm: true, // auto-confirm so they can login immediately without an email link
+      user_metadata: {
+        full_name: fullName.trim(),
+        role: role === "ADMIN" ? "ADMIN" : "TEAM_MEMBER",
+        avatar_url: avatarUrl || "/image/user/user-01.png",
+      },
+    });
+
+    if (authError) {
+      if (authError.message?.toLowerCase().includes("already registered") || authError.status === 422) {
+        return NextResponse.json(
+          { error: `A user with email ${email.trim().toLowerCase()} already exists. Ask them to use their existing password to login.` },
+          { status: 409 }
+        );
+      }
+      throw authError;
+    }
+
+    const userId = authData.user.id;
     const newUser = {
       id: userId,
       fullName: fullName.trim(),
@@ -77,9 +115,10 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
+    // 2. Upsert into public.users (the DB trigger may have already created a row)
     const { data, error } = await supabase
       .from("users")
-      .insert([newUser])
+      .upsert([newUser], { onConflict: "id" })
       .select()
       .single();
 
@@ -93,6 +132,7 @@ export async function POST(req: NextRequest) {
         uploadedPhotosCount: 0,
         joinedDate: "Just now",
       },
+      tempPassword,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to add team member";
@@ -100,9 +140,14 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE /api/team - Delete team member
+// DELETE /api/team - Delete team member (ADMIN ONLY)
 export async function DELETE(req: NextRequest) {
   try {
+    const authResult = await requireRole(["ADMIN"], "delete team members");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const supabase = createAdminClient();
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
@@ -114,8 +159,16 @@ export async function DELETE(req: NextRequest) {
     // Clean up event memberships
     await supabase.from("event_members").delete().eq("userId", userId);
 
-    const { error } = await supabase.from("users").delete().eq("id", userId);
-    if (error) throw error;
+    // Remove from public.users
+    const { error: userError } = await supabase.from("users").delete().eq("id", userId);
+    if (userError) throw userError;
+
+    // Delete from Supabase Auth (best-effort — don't fail if auth user doesn't exist)
+    try {
+      await supabase.auth.admin.deleteUser(userId);
+    } catch {
+      // Non-fatal: public.users row is already deleted
+    }
 
     return NextResponse.json({ success: true, message: "Team member deleted successfully" });
   } catch (error: unknown) {

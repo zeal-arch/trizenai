@@ -50,7 +50,7 @@ export function CustomerGalleryViewer({
         <div>
           <h1 className="text-lg md:text-xl font-bold tracking-tight text-white">{title}</h1>
           {eventTitle && (
-            <p className="text-xs text-gray-400 mt-0.5">{eventTitle} • {photos.length} curated photographs{publishedAt ? ` • ${new Date(publishedAt).toLocaleDateString()}` : ""}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{eventTitle} • {photos.length} curated photograph{photos.length !== 1 ? "s" : ""}{publishedAt ? ` • ${new Date(publishedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : ""}</p>
           )}
         </div>
 
@@ -71,46 +71,55 @@ export function CustomerGalleryViewer({
 
       {/* Photo Grid */}
       <main className="max-w-7xl mx-auto p-6 md:p-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {photos.map((photo, idx) => (
-            <div
-              key={photo.id}
-              onClick={() => setActivePhotoIndex(idx)}
-              className="group relative aspect-4/3 overflow-hidden rounded-2xl bg-white/5 cursor-pointer transition-transform duration-300 hover:scale-[1.02] shadow-lg"
-            >
-              <Image
-                src={photo.thumbnailUrl || photo.url}
-                alt={photo.filename}
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                className="object-cover transition-opacity duration-300 group-hover:opacity-90"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-4">
-                <span className="text-xs font-medium text-white truncate max-w-[160px]">{photo.filename}</span>
-                <div className="flex items-center gap-2">
-                  <a
-                    href={photo.url}
-                    download={photo.filename}
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-xs transition text-white"
-                    title="Download Photo"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Download className="size-3.5" />
-                  </a>
-                  <button
-                    type="button"
-                    className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-xs transition text-white"
-                    title="View Fullscreen"
-                  >
-                    <Eye className="size-3.5" />
-                  </button>
+        {photos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center text-gray-500">
+            <div className="text-5xl mb-4">🖼️</div>
+            <p className="text-base font-medium text-gray-400">No photos in this gallery yet.</p>
+            <p className="text-xs mt-1 text-gray-600">The photographer has not added any photos.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {photos.map((photo, idx) => (
+              <div
+                key={photo.id}
+                onClick={() => setActivePhotoIndex(idx)}
+                className="group relative aspect-4/3 overflow-hidden rounded-2xl bg-white/5 cursor-pointer transition-transform duration-300 hover:scale-[1.02] shadow-lg"
+              >
+                <Image
+                  src={photo.thumbnailUrl || photo.url}
+                  alt={photo.filename}
+                  fill
+                  unoptimized
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  className="object-cover transition-opacity duration-300 group-hover:opacity-90"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-4">
+                  <span className="text-xs font-medium text-white truncate max-w-[160px]">{photo.filename}</span>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={photo.url}
+                      download={photo.filename}
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-xs transition text-white"
+                      title="Download Photo"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download className="size-3.5" />
+                    </a>
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-xs transition text-white"
+                      title="View Fullscreen"
+                    >
+                      <Eye className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Lightbox Modal */}
@@ -160,11 +169,12 @@ export function CustomerGalleryViewer({
                 download={activePhoto.filename}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-indigo-400 hover:text-indigo-300 font-medium"
+                className="flex items-center gap-1.5 text-brand-softPeriwinkle hover:underline font-medium"
               >
                 <Download className="size-4" />
                 <span>Download Full Res</span>
               </a>
+
             </div>
           </div>
         </div>

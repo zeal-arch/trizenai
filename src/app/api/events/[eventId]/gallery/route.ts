@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/permissions/require-role";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -48,12 +49,17 @@ export async function GET(
   }
 }
 
-// POST /api/events/[eventId]/gallery - Create or publish customer gallery
+// POST /api/events/[eventId]/gallery - Create or publish customer gallery (ADMIN ONLY)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const authResult = await requireRole(["ADMIN"], "publish customer galleries");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const { eventId } = await params;
     const supabase = createAdminClient();
     const body = await req.json();
@@ -105,7 +111,7 @@ export async function POST(
       savedGallery = data;
     } else {
       // Create new gallery
-      galleryId = `gallery-${Date.now()}`;
+      galleryId = crypto.randomUUID();
       const newGallery = {
         id: galleryId,
         eventId,
@@ -141,7 +147,7 @@ export async function POST(
 
     if (selectedPhotos && selectedPhotos.length > 0) {
       const galleryPhotoInserts = selectedPhotos.map((p, idx) => ({
-        id: `gp-${Date.now()}-${idx}`,
+        id: crypto.randomUUID(),
         galleryId,
         photoId: p.id,
         displayOrder: idx,

@@ -5,6 +5,7 @@ import {
   AboutUsIcon,
   User,
 } from "@/admin/assets/icons";
+import type { UserRole } from "@/types";
 
 export type SubItem = {
   title: string;
@@ -78,3 +79,35 @@ export const NAV_DATA: NavSection[] = [
     ],
   },
 ];
+
+export function getNavData(role: UserRole = "ADMIN"): NavSection[] {
+  if (role === "TEAM_MEMBER") {
+    return [
+      {
+        label: "MY WORKSPACE",
+        items: [
+          {
+            title: "Assigned Events",
+            url: "/admin/events",
+            icon: AppointmentsIcon,
+            items: [],
+          },
+        ],
+      },
+      {
+        label: "ACCOUNT",
+        items: [
+          {
+            title: "Profile",
+            url: "/admin/profile",
+            icon: User,
+            items: [],
+          },
+        ],
+      },
+    ];
+  }
+
+  return NAV_DATA;
+}
+

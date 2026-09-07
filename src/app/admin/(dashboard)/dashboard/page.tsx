@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -17,6 +18,7 @@ import {
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Button } from "@/components/button";
 import { Badge } from "@/components/badge";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface DashboardStats {
   totalEvents: number;
@@ -38,46 +40,70 @@ interface RecentEvent {
 }
 
 export default function AdminDashboardPage() {
-  const [stats] = useState<DashboardStats>({
-    totalEvents: 3,
-    totalPhotos: 124,
-    selectedPhotos: 48,
-    publishedGalleries: 2,
-  });
+  const router = useRouter();
+  const { isTeamMember, loading: authLoading } = useCurrentUser();
 
-  const [recentEvents] = useState<RecentEvent[]>([
-    {
-      id: "00000000-0000-0000-0000-000000000001",
-      title: "TrizenAI Annual Gala 2026",
-      date: "2026-09-15",
-      location: "The Grand Ballroom, Bangalore",
-      coverImage: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=600&auto=format&fit=crop&q=80",
-      photoCount: 68,
-      selectedCount: 28,
-      galleryPublished: true,
-      gallerySlug: "gala-2026",
-    },
-    {
-      id: "00000000-0000-0000-0000-000000000002",
-      title: "Tech Innovators Summit 2026",
-      date: "2026-09-20",
-      location: "Convention Center, Hall B",
-      coverImage: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&auto=format&fit=crop&q=80",
-      photoCount: 42,
-      selectedCount: 16,
-      galleryPublished: false,
-    },
-    {
-      id: "00000000-0000-0000-0000-000000000003",
-      title: "Product Launch Showcase",
-      date: "2026-09-28",
-      location: "Studio 4, Downtown",
-      coverImage: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&auto=format&fit=crop&q=80",
-      photoCount: 14,
-      selectedCount: 4,
-      galleryPublished: false,
-    },
-  ]);
+  useEffect(() => {
+    if (!authLoading && isTeamMember) {
+      router.replace("/admin/events");
+    }
+  }, [authLoading, isTeamMember, router]);
+
+  const [stats, setStats] = useState<DashboardStats>({
+    totalEvents: 0,
+    totalPhotos: 0,
+    selectedPhotos: 0,
+    publishedGalleries: 0,
+  });
+  const [recentEvents, setRecentEvents] = useState<RecentEvent[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (authLoading || isTeamMember) return;
+    async function fetchDashboardData() {
+      try {
+        setLoadingData(true);
+        const res = await fetch("/api/events");
+        if (res.ok) {
+          const data = await res.json();
+          const events: RecentEvent[] = (data.events || []).map((e: {
+            id: string;
+            title: string;
+            date?: string;
+            location?: string;
+            coverImage?: string;
+            photoCount?: number;
+            selectedCount?: number;
+            isPublished?: boolean;
+            gallery?: { slug?: string };
+          }) => ({
+            id: e.id,
+            title: e.title,
+            date: e.date ? e.date.split("T")[0] : "",
+            location: e.location,
+            coverImage: e.coverImage,
+            photoCount: e.photoCount || 0,
+            selectedCount: e.selectedCount || 0,
+            galleryPublished: e.isPublished || false,
+            gallerySlug: e.gallery?.slug,
+          }));
+
+          setRecentEvents(events.slice(0, 5));
+          setStats({
+            totalEvents: events.length,
+            totalPhotos: events.reduce((sum, e) => sum + e.photoCount, 0),
+            selectedPhotos: events.reduce((sum, e) => sum + e.selectedCount, 0),
+            publishedGalleries: events.filter((e) => e.galleryPublished).length,
+          });
+        }
+      } catch {
+        // keep zeros
+      } finally {
+        setLoadingData(false);
+      }
+    }
+    fetchDashboardData();
+  }, [authLoading, isTeamMember]);
 
   const quickLinks = [
     {
@@ -113,6 +139,22 @@ export default function AdminDashboardPage() {
       iconClass: "text-ios-light-green dark:text-ios-dark-green group-hover:text-green-700 dark:group-hover:text-green-300",
     },
   ];
+
+  if (authLoading || isTeamMember) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadingData) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

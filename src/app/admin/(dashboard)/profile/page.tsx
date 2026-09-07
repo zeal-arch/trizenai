@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import {
   Camera,
@@ -18,22 +18,36 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Label } from "@/components/label";
 import { Textarea } from "@/components/textarea";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { toast } from "sonner";
 
 export default function ProfilePage() {
-  const [fullName, setFullName] = useState("Lead Administrator");
-  const [email] = useState("admin@trizen-ai.com");
-  const [role] = useState("SUPER ADMIN");
-  const [bio, setBio] = useState(
-    "Lead Photographer & Studio Director at TrizenAI. Specializing in high-end keynote galas, product reveals, and luxury editorial event galleries."
-  );
+  const { user, isTeamMember } = useCurrentUser();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("/image/user/user-03.png");
+  const [bio, setBio] = useState("");
   const [phone, setPhone] = useState("9876543210");
   const [location, setLocation] = useState("Bangalore, India");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      setFullName(user.fullName || "User");
+      setEmail(user.email || "");
+      setRole(user.role === "ADMIN" ? "SUPER ADMIN" : "TEAM PHOTOGRAPHER");
+      setAvatarUrl(user.avatarUrl || "/image/user/user-03.png");
+      setBio(
+        user.role === "ADMIN"
+          ? "Lead Photographer & Studio Director at TrizenAI. Specializing in high-end keynote galas, product reveals, and luxury editorial event galleries."
+          : "Professional event photographer and media specialist contributing to TrizenAI collaborative shoots and galleries."
+      );
+    }
+  }, [user]);
+
   // Default images from /image folder
   const coverPhoto = "/image/cover/cover-01.png";
-  const profilePhoto = "/image/user/user-03.png";
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +69,7 @@ export default function ProfilePage() {
       {/* ── Main Profile Header Card (RAYVOY Cover Banner Style) ─────────────── */}
       <div className="overflow-hidden rounded-2xl border border-[#EBE8E3] bg-white shadow-xs dark:border-white/15 dark:bg-gray-dark">
         {/* Cover Photo Banner (Fixed Default Cover Image) */}
-        <div className="relative z-20 h-40 md:h-64 w-full overflow-hidden bg-gray-100 dark:bg-dark-2">
+        <div className="relative z-0 h-40 md:h-64 w-full overflow-hidden bg-gray-100 dark:bg-dark-2">
           <Image
             src={coverPhoto}
             alt="profile cover"
@@ -70,14 +84,15 @@ export default function ProfilePage() {
         {/* Profile Info Container */}
         <div className="px-4 pb-6 text-center lg:pb-8">
           {/* Overlapping Avatar */}
-          <div className="relative z-30 mx-auto -mt-16 h-28 w-28 rounded-full bg-white p-1 shadow-md dark:bg-gray-dark sm:-mt-22 sm:h-36 sm:w-36 sm:p-1.5">
+          <div className="relative z-1 mx-auto -mt-16 h-28 w-28 rounded-full bg-white p-1 shadow-md dark:bg-gray-dark sm:-mt-22 sm:h-36 sm:w-36 sm:p-1.5">
             <div className="relative h-full w-full overflow-hidden rounded-full border-2 border-white dark:border-white/15">
               <Image
-                src={profilePhoto}
+                src={avatarUrl}
                 fill
                 sizes="(max-width: 640px) 112px, 144px"
                 className="object-cover"
-                alt={fullName}
+                alt={fullName || "User Avatar"}
+                unoptimized
               />
             </div>
             <button
@@ -93,10 +108,10 @@ export default function ProfilePage() {
           <div className="mt-4">
             <div className="flex items-center justify-center gap-2">
               <h3 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-                {fullName}
+                {fullName || "User"}
               </h3>
               <span className="inline-flex items-center gap-1 rounded-full bg-ios-light-blue/10 dark:bg-ios-dark-blue/20 px-2.5 py-0.5 text-[11px] font-semibold text-ios-light-blue dark:text-ios-dark-blue">
-                <Shield className="size-3" /> {role}
+                <Shield className="size-3" /> {role || (isTeamMember ? "TEAM PHOTOGRAPHER" : "ADMIN")}
               </span>
             </div>
             <p className="mt-1 text-xs text-dark-5 dark:text-dark-6 flex items-center justify-center gap-1.5">

@@ -3,9 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, KeyRound, Shield, ArrowRight, Image as ImageIcon } from "lucide-react";
-import { Button } from "@/components/button";
-import { Input } from "@/components/input";
+import { playfair } from "@/lib/fonts";
 
 export default function HomePage() {
   const [gallerySlug, setGallerySlug] = useState("");
@@ -19,122 +17,142 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col justify-between overflow-hidden">
-      {/* Background ambient gradient */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-indigo-500/15 dark:bg-indigo-600/10 rounded-full blur-[140px]" />
-      </div>
-
+    <div className="min-h-screen flex flex-col justify-between bg-brand-cream text-brand-nearBlack">
       {/* Navigation Header */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-5 max-w-7xl mx-auto w-full border-b border-border/60 backdrop-blur-sm">
+      <header className="flex items-center justify-between px-6 sm:px-12 py-6 max-w-6xl mx-auto w-full border-b border-brand-lightGray">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-lg shadow-indigo-600/20 font-bold text-sm">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-brand-nearBlack text-white font-semibold text-xs tracking-wider">
             TZ
           </div>
           <div className="flex flex-col">
-            <span className="font-bold text-base tracking-tight text-gray-900 dark:text-white">TrizenAI</span>
-            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Photo Sharing</span>
+            <span className="font-semibold text-sm tracking-tight text-brand-nearBlack">
+              TrizenAI
+            </span>
+            <span className="text-[10px] text-brand-warmGray uppercase tracking-widest font-medium">
+              Photo Sharing
+            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <Link href="/admin/login">
-            <Button variant="outline" size="sm" className="rounded-xl font-medium">
-              Admin / Team Sign In
-            </Button>
+          <Link
+            href="/admin/login"
+            className="px-4 py-2 rounded-full text-xs font-semibold text-brand-nearBlack hover:bg-white/80 border border-brand-lightGray transition"
+          >
+            Sign In
           </Link>
-          <Link href="/admin/register">
-            <Button size="sm" className="rounded-xl font-medium bg-indigo-600 hover:bg-indigo-700 text-white">
-              Create Account
-            </Button>
+          <Link
+            href="/admin/register"
+            className="px-4 py-2 rounded-full text-xs font-semibold text-white bg-brand-softPeriwinkle hover:opacity-90 shadow-sm transition"
+          >
+            Create Account
           </Link>
         </div>
       </header>
 
       {/* Hero Content */}
-      <main className="relative z-10 max-w-5xl mx-auto px-6 py-16 text-center flex-1 flex flex-col items-center justify-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-6">
-          <span className="size-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse" />
-          <span>Full-Stack Photo Sharing & PIN-Gated Delivery</span>
-        </div>
+      <main className="max-w-4xl mx-auto px-6 py-16 text-center flex-1 flex flex-col items-center justify-center">
+        {/* Subtle Category Tag */}
+        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-lavenderGrey mb-4">
+          Photo Sharing & Proofing Platform
+        </span>
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white max-w-3xl leading-[1.15]">
+        {/* Editorial Headline */}
+        <h1
+          className={`text-4xl sm:text-5xl md:text-6xl tracking-tight text-brand-nearBlack max-w-3xl leading-[1.18] ${playfair.className}`}
+        >
           Collaborative Event Photos,{" "}
-          <span className="bg-gradient-to-r from-indigo-600 to-violet-500 bg-clip-text text-transparent">
+          <span className="italic font-normal text-brand-softPeriwinkle">
             Delivered Securely.
           </span>
         </h1>
 
-        <p className="mt-5 text-sm sm:text-base text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
-          Photography teams collaborate and batch upload high-resolution event shots.
-          Admins curate selections and publish private customer galleries protected with access PINs.
+        <p className="mt-5 text-sm sm:text-base text-brand-warmGray max-w-xl leading-relaxed font-light">
+          Photography teams collaborate and batch upload high-resolution shots.
+          Admins curate selections and publish private customer galleries protected with PINs.
         </p>
 
-        {/* Customer Gallery Quick Access Form */}
-        <div className="mt-10 w-full max-w-md bg-white dark:bg-dark-2 p-5 rounded-3xl border border-border shadow-xl">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-500 text-left mb-3 flex items-center gap-1.5">
-            <KeyRound className="size-3.5 text-indigo-600" />
-            <span>Have a Gallery Link?</span>
-          </p>
+        {/* Customer Gallery Access Card */}
+        <div className="mt-10 w-full max-w-md bg-white p-5 rounded-2xl border border-brand-lightGray shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-left">
+          <label
+            htmlFor="gallerySlug"
+            className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-lavenderGrey mb-2"
+          >
+            Have a Gallery Link?
+          </label>
           <form onSubmit={handleOpenGallery} className="flex gap-2">
-            <Input
+            <input
+              id="gallerySlug"
               type="text"
               value={gallerySlug}
               onChange={(e) => setGallerySlug(e.target.value)}
-              placeholder="e.g. arjun-priya-wedding"
-              className="h-11 rounded-xl text-xs"
+              placeholder="e.g. arjun-priya-wedding or gala-2026"
+              className="flex-1 h-11 px-3.5 rounded-xl border border-brand-lightGray bg-brand-cream/60 text-xs text-brand-nearBlack placeholder:text-brand-warmGray/60 focus:outline-none focus:border-brand-softPeriwinkle focus:bg-white transition"
               required
             />
-            <Button
+            <button
               type="submit"
-              className="h-11 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
+              className="h-11 px-5 rounded-xl bg-brand-nearBlack hover:bg-brand-nearBlack/90 text-white shrink-0 text-xs font-semibold transition cursor-pointer"
             >
-              <span>Open</span>
-              <ArrowRight className="size-3.5" />
-            </Button>
+              Open
+            </button>
           </form>
         </div>
 
-        {/* Three Roles Feature Grid */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-left w-full">
+        {/* Three Roles Grid */}
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-5 text-left w-full">
           {/* Admin */}
-          <div className="p-6 rounded-3xl border border-border bg-white/70 dark:bg-dark-2/70 backdrop-blur-sm shadow-xs">
-            <div className="size-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center mb-4">
-              <Shield className="size-5" />
+          <div className="p-6 rounded-2xl border border-brand-lightGray bg-white shadow-xs flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-softPeriwinkle">
+                Role 01
+              </span>
+              <h3 className="font-semibold text-sm text-brand-nearBlack mt-1.5">
+                Admin / Lead
+              </h3>
+              <p className="text-xs text-brand-warmGray mt-2 leading-relaxed font-light">
+                Create events, assign photographers, review team uploads, select photos, and publish PIN-protected client galleries.
+              </p>
             </div>
-            <h3 className="font-bold text-sm text-gray-900 dark:text-white">Admin / Lead</h3>
-            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-              Create events, assign photographers, review all uploads, select favorites, and publish PIN-protected galleries.
-            </p>
           </div>
 
           {/* Team Member */}
-          <div className="p-6 rounded-3xl border border-border bg-white/70 dark:bg-dark-2/70 backdrop-blur-sm shadow-xs">
-            <div className="size-10 rounded-2xl bg-violet-50 dark:bg-violet-950/40 text-violet-600 flex items-center justify-center mb-4">
-              <Camera className="size-5" />
+          <div className="p-6 rounded-2xl border border-brand-lightGray bg-white shadow-xs flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-softPeriwinkle">
+                Role 02
+              </span>
+              <h3 className="font-semibold text-sm text-brand-nearBlack mt-1.5">
+                Team Member
+              </h3>
+              <p className="text-xs text-brand-warmGray mt-2 leading-relaxed font-light">
+                Sign in to view assigned events, batch upload raw event photography, and manage personal submissions.
+              </p>
             </div>
-            <h3 className="font-bold text-sm text-gray-900 dark:text-white">Team Member</h3>
-            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-              Log in to view assigned events, drag-and-drop batch upload raw photos with progress tracking.
-            </p>
           </div>
 
           {/* Customer */}
-          <div className="p-6 rounded-3xl border border-border bg-white/70 dark:bg-dark-2/70 backdrop-blur-sm shadow-xs">
-            <div className="size-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center mb-4">
-              <ImageIcon className="size-5" />
+          <div className="p-6 rounded-2xl border border-brand-lightGray bg-white shadow-xs flex flex-col justify-between">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-brand-softPeriwinkle">
+                Role 03
+              </span>
+              <h3 className="font-semibold text-sm text-brand-nearBlack mt-1.5">
+                Customer (No Account)
+              </h3>
+              <p className="text-xs text-brand-warmGray mt-2 leading-relaxed font-light">
+                Open the shareable gallery link, enter your 6-digit access PIN, and browse curated photos in full resolution.
+              </p>
             </div>
-            <h3 className="font-bold text-sm text-gray-900 dark:text-white">Customer (No Account)</h3>
-            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-              Open the shareable gallery link, enter your secret 6-digit PIN, and view curated photos in high resolution.
-            </p>
           </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border/60 py-6 text-center text-xs text-gray-500">
-        <p>TrizenAI Full-Stack Internship Challenge • Built with Next.js, Prisma, Supabase & Cloudinary</p>
+      <footer className="border-t border-brand-lightGray py-6 text-center text-xs text-brand-warmGray">
+        <p className="font-light">
+          TrizenAI Full-Stack Internship Challenge • Built with Next.js, Prisma, Supabase & Cloudinary
+        </p>
       </footer>
     </div>
   );

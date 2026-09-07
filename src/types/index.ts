@@ -42,6 +42,12 @@ export interface PhotoItem {
   uploadedBy: string;
   uploaderName?: string;
   uploaderEmail?: string;
+  uploader?: {
+    id: string;
+    fullName: string;
+    avatarUrl?: string | null;
+    email?: string;
+  };
   publicId: string;
   url: string;
   secureUrl: string;
@@ -54,6 +60,7 @@ export interface PhotoItem {
   tags?: string[];
   createdAt: string;
 }
+
 
 export interface GalleryItem {
   id: string;

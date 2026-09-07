@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/permissions/require-role";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/events/[eventId]/team - Get team members with assignment status for this event
+// GET /api/events/[eventId]/team - Get team members with assignment status for this event (ADMIN ONLY)
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const authResult = await requireRole(["ADMIN"], "view event team assignments");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const { eventId } = await params;
     const supabase = createAdminClient();
 
@@ -59,12 +65,17 @@ export async function GET(
   }
 }
 
-// POST /api/events/[eventId]/team - Assign user to event
+// POST /api/events/[eventId]/team - Assign user to event (ADMIN ONLY)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const authResult = await requireRole(["ADMIN"], "assign team members to events");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const { eventId } = await params;
     const supabase = createAdminClient();
     const body = await req.json();
@@ -74,7 +85,7 @@ export async function POST(
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
 
-    const membershipId = `em-${Date.now()}`;
+    const membershipId = crypto.randomUUID();
     const { data, error } = await supabase
       .from("event_members")
       .insert([
@@ -97,12 +108,17 @@ export async function POST(
   }
 }
 
-// DELETE /api/events/[eventId]/team - Unassign user from event
+// DELETE /api/events/[eventId]/team - Unassign user from event (ADMIN ONLY)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const authResult = await requireRole(["ADMIN"], "remove team members from events");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const { eventId } = await params;
     const supabase = createAdminClient();
     const { searchParams } = new URL(req.url);
@@ -126,3 +142,4 @@ export async function DELETE(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

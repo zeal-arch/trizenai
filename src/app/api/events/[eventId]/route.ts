@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole, requireEventAccess } from "@/lib/permissions/require-role";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,11 @@ export async function GET(
 ) {
   try {
     const { eventId } = await params;
+    const accessCheck = await requireEventAccess(eventId, "view this event");
+    if (accessCheck instanceof NextResponse) {
+      return accessCheck;
+    }
+
     const supabase = createAdminClient();
 
     const { data: event, error: eventError } = await supabase
@@ -56,12 +62,17 @@ export async function GET(
   }
 }
 
-// PATCH /api/events/[eventId] - Update event details
+// PATCH /api/events/[eventId] - Update event details (ADMIN ONLY)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const authResult = await requireRole(["ADMIN"], "update event details");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const { eventId } = await params;
     const supabase = createAdminClient();
     const body = await req.json();
@@ -97,12 +108,17 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/events/[eventId] - Delete event (and cascade photos/galleries)
+// DELETE /api/events/[eventId] - Delete event (ADMIN ONLY)
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const authResult = await requireRole(["ADMIN"], "delete events");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const { eventId } = await params;
     const supabase = createAdminClient();
 
@@ -132,3 +148,4 @@ export async function DELETE(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

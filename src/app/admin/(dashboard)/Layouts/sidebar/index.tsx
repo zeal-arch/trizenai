@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { NAV_DATA } from "./data";
+import { getNavData, type NavSection } from "./data";
 import { ArrowLeftIcon, ChevronUp } from "@/admin/assets/icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 const LARGE_DESKTOP_QUERY = "(min-width: 1440px)";
 const DESKTOP_WIDTH = {
@@ -19,7 +20,7 @@ const LARGE_DESKTOP_WIDTH = {
   collapsed: 72,
 };
 
-type SidebarSectionData = (typeof NAV_DATA)[number];
+type SidebarSectionData = NavSection;
 type SidebarItem = SidebarSectionData["items"][number];
 
 export function Sidebar() {
@@ -27,11 +28,14 @@ export function Sidebar() {
   const sidebar = useSidebarContext();
   const isLargeDesktop = useIsLargeDesktop();
   const { expandedItems, toggleExpanded, setExpanded } = useExpandedSections();
+  const { role } = useCurrentUser();
+
+  const navData = useMemo(() => getNavData(role), [role]);
 
   useEffect(() => {
-    const activeParent = findParentItemByPath(NAV_DATA, pathname);
+    const activeParent = findParentItemByPath(navData, pathname);
     if (activeParent) setExpanded(activeParent);
-  }, [pathname, setExpanded]);
+  }, [pathname, setExpanded, navData]);
 
   const widths = isLargeDesktop ? LARGE_DESKTOP_WIDTH : DESKTOP_WIDTH;
   const computedWidth = useMemo(() => {
@@ -42,6 +46,7 @@ export function Sidebar() {
     if (!sidebar.isOpen) return "0";
     return sidebar.isCollapsed ? widths.collapsed : widths.expanded;
   }, [sidebar.isMobile, sidebar.isOpen, sidebar.isCollapsed, widths]);
+
 
   return (
     <>
@@ -102,7 +107,7 @@ export function Sidebar() {
 
           {/* Navigation */}
           <nav className="mt-4 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar scrollbar-hide pr-2 min-w-0 min-[850px]:mt-6">
-            {NAV_DATA.map((section) => (
+            {navData.map((section) => (
               <SidebarSection
                 key={section.label}
                 section={section}
@@ -116,6 +121,7 @@ export function Sidebar() {
           </nav>
         </div>
       </aside>
+
     </>
   );
 }
@@ -151,7 +157,7 @@ function useExpandedSections() {
   return { expandedItems, toggleExpanded, setExpanded } as const;
 }
 
-function findParentItemByPath(sections: typeof NAV_DATA, path: string) {
+function findParentItemByPath(sections: NavSection[], path: string) {
   for (const section of sections) {
     for (const item of section.items) {
       // Check if item has a direct url match
@@ -171,6 +177,7 @@ function findParentItemByPath(sections: typeof NAV_DATA, path: string) {
   }
   return null;
 }
+
 
 function SidebarSection({
   section,

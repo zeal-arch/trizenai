@@ -1,18 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole, getCurrentUserOrNull } from "@/lib/permissions/require-role";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/events - Retrieve all events with photo and gallery counts
+// GET /api/events - Retrieve events (filtered for TEAM_MEMBER to assigned only)
 export async function GET() {
   try {
     const supabase = createAdminClient();
+    const currentUser = await getCurrentUserOrNull();
 
-    // 1. Fetch events
-    const { data: events, error: eventsError } = await supabase
+    let assignedEventIds: string[] | null = null;
+
+    // If the authenticated user is a TEAM_MEMBER, filter to only assigned events
+    if (currentUser && currentUser.role === "TEAM_MEMBER") {
+      const { data: memberRecords, error: memberErr } = await supabase
+        .from("event_members")
+        .select("eventId")
+        .eq("userId", currentUser.user.id);
+
+      if (memberErr) {
+        throw memberErr;
+      }
+
+      assignedEventIds = (memberRecords || []).map((m) => m.eventId);
+
+      // If team member is not assigned to any events, return empty list
+      if (assignedEventIds.length === 0) {
+        return NextResponse.json({
+          success: true,
+          events: [],
+          role: currentUser.role,
+        });
+      }
+    }
+
+    // 1. Fetch events (filtered if team member)
+    let query = supabase
       .from("events")
       .select("*")
       .order("createdAt", { ascending: false });
+
+    if (assignedEventIds !== null) {
+      query = query.in("id", assignedEventIds);
+    }
+
+    const { data: events, error: eventsError } = await query;
 
     if (eventsError) {
       throw eventsError;
@@ -21,7 +54,7 @@ export async function GET() {
     // 2. Fetch photo counts and curation counts per event
     const { data: photos, error: photosError } = await supabase
       .from("photos")
-      .select("id, eventId, isSelected");
+      .select("id, eventId, isSelected, uploadedBy");
 
     if (photosError) {
       throw photosError;
@@ -36,17 +69,28 @@ export async function GET() {
       throw galleriesError;
     }
 
+    // 4. Fetch event member counts
+    const { data: eventMembers } = await supabase
+      .from("event_members")
+      .select("eventId");
+
     // Combine event data with aggregates
     const formattedEvents = (events || []).map((event) => {
       const eventPhotos = (photos || []).filter((p) => p.eventId === event.id);
       const totalPhotos = eventPhotos.length;
       const selectedPhotos = eventPhotos.filter((p) => p.isSelected).length;
+      const myPhotos = currentUser
+        ? eventPhotos.filter((p) => p.uploadedBy === currentUser.user.id).length
+        : 0;
+      const teamCount = (eventMembers || []).filter((m) => m.eventId === event.id).length;
       const gallery = (galleries || []).find((g) => g.eventId === event.id);
 
       return {
         ...event,
         photoCount: totalPhotos,
         selectedCount: selectedPhotos,
+        myPhotoCount: myPhotos,
+        teamCount: teamCount || 1,
         gallery: gallery || null,
         isPublished: gallery?.isPublished || false,
       };
@@ -55,6 +99,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       events: formattedEvents,
+      role: currentUser?.role || "ADMIN",
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to fetch events";
@@ -62,25 +107,24 @@ export async function GET() {
   }
 }
 
-// POST /api/events - Create a new event
+// POST /api/events - Create a new event (ADMIN ONLY)
 export async function POST(req: NextRequest) {
   try {
+    const authResult = await requireRole(["ADMIN"], "create new events");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const supabase = createAdminClient();
     const body = await req.json();
-    const { title, description, date, location, coverImage, createdBy } = body;
+    const { title, description, date, location, coverImage } = body;
 
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
-    // Default creator if not provided
-    let creatorId = createdBy;
-    if (!creatorId) {
-      const { data: user } = await supabase.from("users").select("id").limit(1).maybeSingle();
-      creatorId = user?.id || "admin-system";
-    }
-
-    const eventId = `event-${Date.now()}`;
+    const creatorId = authResult.user.id;
+    const eventId = crypto.randomUUID();
     const newEvent = {
       id: eventId,
       title: title.trim(),
@@ -103,6 +147,16 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
+    // Automatically assign the admin creator to the event
+    await supabase.from("event_members").insert([
+      {
+        id: crypto.randomUUID(),
+        eventId: eventId,
+        userId: creatorId,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+
     return NextResponse.json({
       success: true,
       event: data,
@@ -112,3 +166,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

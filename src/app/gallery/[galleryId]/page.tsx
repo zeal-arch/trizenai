@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, use } from "react";
-import { KeyRound, Loader2, Lock, ShieldCheck, AlertCircle } from "lucide-react";
-import { Button } from "@/components/button";
-import { Input } from "@/components/input";
+import { Loader2 } from "lucide-react";
 import { CustomerGalleryViewer } from "@/app/frontend/components/customer-gallery-viewer";
+import { playfair } from "@/lib/fonts";
 
 interface Photo {
   id: string;
@@ -76,72 +75,61 @@ export default function PublicGalleryPage({
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0E0E10] px-4">
-      {/* Background ambient glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
-      </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-brand-cream text-brand-nearBlack px-4 py-8">
+      <div className="w-full max-w-sm mx-auto bg-white p-8 rounded-3xl border border-brand-lightGray shadow-[0_4px_25px_rgba(0,0,0,0.04)] text-center animate-in fade-in duration-500">
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-lavenderGrey">
+          Protected Gallery
+        </span>
 
-      <div className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#16161A]/90 p-8 shadow-2xl backdrop-blur-xl">
-        <div className="flex flex-col items-center text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 shadow-lg shadow-indigo-600/20">
-            <Lock className="size-7" />
-          </div>
+        <h1 className={`text-2xl sm:text-3xl tracking-tight text-brand-nearBlack mt-2 mb-2 ${playfair.className}`}>
+          Client <span className="italic font-normal">Access</span>
+        </h1>
 
-          <h1 className="mt-5 text-xl font-bold tracking-tight text-white">
-            Private Customer Gallery
-          </h1>
-          <p className="mt-2 text-xs text-gray-400 max-w-xs">
-            This photo gallery is protected. Please enter your 6-digit access PIN provided by the event team.
-          </p>
-        </div>
+        <p className="text-xs text-brand-warmGray leading-relaxed font-light mb-6">
+          Please enter the 6-digit security PIN provided by your event photographer.
+        </p>
 
-        <form onSubmit={handleVerify} className="mt-6 space-y-4">
-          <div className="space-y-2">
-            <div className="relative">
-              <Input
-                type="text"
-                maxLength={6}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="Enter 6-digit PIN"
-                className="h-13 text-center font-mono text-2xl tracking-[0.4em] font-bold text-white bg-black/40 border-white/10 focus:border-indigo-500 rounded-xl"
-                autoFocus
-                required
-              />
-              <KeyRound className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 size-5 text-gray-500" />
-            </div>
+        <form onSubmit={handleVerify} className="space-y-4">
+          <div>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="••••••"
+              className="w-full h-12 text-center font-mono text-xl tracking-[0.4em] font-semibold text-brand-nearBlack bg-brand-cream/70 border border-brand-lightGray focus:border-brand-softPeriwinkle focus:bg-white rounded-xl focus:outline-none transition"
+              autoFocus
+              required
+            />
 
             {error && (
-              <div className="flex items-center gap-2 text-xs text-rose-400 bg-rose-950/30 border border-rose-900/50 p-2.5 rounded-xl">
-                <AlertCircle className="size-4 shrink-0" />
-                <span>{error}</span>
-              </div>
+              <p className="mt-2 text-xs text-red-500 font-medium">
+                {error}
+              </p>
             )}
           </div>
 
-          <Button
+          <button
             type="submit"
             disabled={isVerifying || pin.length < 4}
-            className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm transition shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
+            className="w-full h-11 bg-brand-softPeriwinkle hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-xl text-xs uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-2"
           >
             {isVerifying ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                <span>Verifying Access...</span>
+                <span>Verifying...</span>
               </>
             ) : (
-              <>
-                <ShieldCheck className="size-4" />
-                <span>Unlock Gallery</span>
-              </>
+              <span>Unlock Gallery</span>
             )}
-          </Button>
+          </button>
         </form>
 
-        <div className="mt-8 text-center">
-          <p className="text-[11px] text-gray-500">
-            Powered by <span className="font-semibold text-gray-400">TrizenAI Photo Sharing</span>
+        <div className="mt-8 pt-4 border-t border-brand-lightGray/60 text-center">
+          <p className="text-[10px] text-brand-warmGray font-light">
+            TrizenAI Photo Sharing Platform
           </p>
         </div>
       </div>

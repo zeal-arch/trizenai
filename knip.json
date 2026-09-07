@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "next": {
+    "entry": [
+      "next.config.{js,ts,mjs,cjs}",
+      "src/app/**/*.{js,jsx,ts,tsx}",
+      "src/middleware.{js,ts}"
+    ]
+  },
+  "project": ["src/**/*.{js,jsx,ts,tsx}"],
+  "ignore": [
+    "src/components/**",
+    "src/lib/cloudinary/**"
+  ],
+  "ignoreExportsUsedInFile": true
+}

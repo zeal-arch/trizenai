@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole, getCurrentUserOrNull, requireEventAccess } from "@/lib/permissions/require-role";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,11 @@ export async function GET(
 ) {
   try {
     const { eventId } = await params;
+    const accessCheck = await requireEventAccess(eventId, "view photos for this event");
+    if (accessCheck instanceof NextResponse) {
+      return accessCheck;
+    }
+
     const { searchParams } = new URL(req.url);
     const selectedOnly = searchParams.get("selected") === "true";
 
@@ -66,8 +72,14 @@ export async function POST(
 ) {
   try {
     const { eventId } = await params;
+    const accessCheck = await requireEventAccess(eventId, "upload photos to this event");
+    if (accessCheck instanceof NextResponse) {
+      return accessCheck;
+    }
+
     const body = await req.json();
     const supabase = createAdminClient();
+    const currentUser = accessCheck;
 
     const {
       photos, // Array of photos or single photo
@@ -82,12 +94,15 @@ export async function POST(
 
     let defaultUploader = uploadedBy;
     if (!defaultUploader) {
+      defaultUploader = currentUser?.user.id;
+    }
+    if (!defaultUploader) {
       const { data: user } = await supabase.from("users").select("id").limit(1).maybeSingle();
       defaultUploader = user?.id || "admin-system";
     }
 
     const photoInserts = rawPhotos.map((p) => {
-      const photoId = p.id || `photo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const photoId = p.id || crypto.randomUUID();
       return {
         id: photoId,
         eventId,
@@ -124,12 +139,17 @@ export async function POST(
   }
 }
 
-// PATCH /api/events/[eventId]/photos - Toggle curation selection (isSelected)
+// PATCH /api/events/[eventId]/photos - Toggle curation selection (ADMIN ONLY)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
+    const authResult = await requireRole(["ADMIN"], "curate photos for customer galleries");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const { eventId } = await params;
     const supabase = createAdminClient();
     const body = await req.json();
@@ -178,19 +198,49 @@ export async function PATCH(
   }
 }
 
-// DELETE /api/events/[eventId]/photos - Delete photos from event
+// DELETE /api/events/[eventId]/photos - Delete photos from event (Admins can delete all; Members only own uploads)
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
     const { eventId } = await params;
+    const accessCheck = await requireEventAccess(eventId, "delete photos from this event");
+    if (accessCheck instanceof NextResponse) {
+      return accessCheck;
+    }
+
     const supabase = createAdminClient();
+    const currentUser = accessCheck;
+
     const body = await req.json();
     const { photoIds } = body;
 
     if (!photoIds || !Array.isArray(photoIds) || photoIds.length === 0) {
       return NextResponse.json({ error: "photoIds array is required" }, { status: 400 });
+    }
+
+
+    // If caller is TEAM_MEMBER, verify all requested photos were uploaded by this member
+    if (currentUser && currentUser.role === "TEAM_MEMBER") {
+      const { data: targetPhotos, error: fetchErr } = await supabase
+        .from("photos")
+        .select("id, uploadedBy")
+        .in("id", photoIds)
+        .eq("eventId", eventId);
+
+      if (fetchErr) throw fetchErr;
+
+      const unauthorized = (targetPhotos || []).some(
+        (p) => p.uploadedBy !== currentUser.user.id
+      );
+
+      if (unauthorized) {
+        return NextResponse.json(
+          { error: "Forbidden: Team Members can only delete photos they uploaded themselves." },
+          { status: 403 }
+        );
+      }
     }
 
     // Delete gallery photo links first
@@ -214,3 +264,4 @@ export async function DELETE(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+

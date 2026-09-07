@@ -150,14 +150,18 @@ const PhotoCardComponent: FC<PhotoCardProps> = ({
           </span>
         </div>
 
-        {photo.uploaderName && (
+        {(photo.uploader?.fullName || photo.uploaderName) && (
           <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-1">
-            Uploaded by <span className="font-medium text-gray-700 dark:text-gray-300">{photo.uploaderName}</span>
+            Uploaded by{" "}
+            <span className="font-medium text-gray-700 dark:text-gray-300">
+              {photo.uploader?.fullName || photo.uploaderName}
+            </span>
           </p>
         )}
       </div>
     </div>
   );
 };
+
 
 export const PhotoCard = memo(PhotoCardComponent);

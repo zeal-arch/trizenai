@@ -62,10 +62,18 @@ export function UserInfo() {
         }
 
         if (authUser) {
+          const { data: dbUser } = await supabase
+            .from("users")
+            .select("id, email, fullName, role, avatarUrl")
+            .or(`id.eq.${authUser.id},email.eq.${authUser.email?.toLowerCase().trim()}`)
+            .maybeSingle();
+
+          const detectedRole = (dbUser?.role as string) || authUser.user_metadata?.role || "TEAM_MEMBER";
+
           const newUserData: UserData = {
-            name: authUser.user_metadata?.full_name || authUser.email?.split("@")[0] || "User",
+            name: dbUser?.fullName || authUser.user_metadata?.full_name || authUser.email?.split("@")[0] || "User",
             email: authUser.email || "",
-            img: authUser.user_metadata?.avatar_url || DEFAULT_USER.img,
+            img: dbUser?.avatarUrl || authUser.user_metadata?.avatar_url || DEFAULT_USER.img,
           };
           
           setUser(newUserData);
@@ -76,11 +84,11 @@ export function UserInfo() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              id: authUser.id,
+              id: dbUser?.id || authUser.id,
               email: authUser.email,
               fullName: newUserData.name,
               avatarUrl: newUserData.img,
-              role: authUser.user_metadata?.role || "ADMIN",
+              role: detectedRole,
             }),
           }).catch(() => {
             // non-blocking sync

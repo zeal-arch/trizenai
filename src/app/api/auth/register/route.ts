@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: NextRequest) {
   try {
     const supabase = createAdminClient();
-    const { id, email, fullName, role } = await req.json();
+    const { id, email, password, fullName, role } = await req.json();
 
     if (!email || !fullName) {
       return NextResponse.json({ error: "Email and Full Name are required." }, { status: 400 });
@@ -16,7 +16,42 @@ export async function POST(req: NextRequest) {
     const assignedRole: UserRole = role === "ADMIN" ? "ADMIN" : "TEAM_MEMBER";
     const cleanEmail = email.toLowerCase().trim();
 
-    // Check if user already exists in PostgreSQL
+    let userId = id;
+
+    // 1. If password is provided, create the user via Supabase Auth Admin with email_confirm: true
+    if (password) {
+      const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+        email: cleanEmail,
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: fullName.trim(),
+          role: assignedRole,
+        },
+      });
+
+      if (authErr) {
+        if (
+          authErr.message?.toLowerCase().includes("already registered") ||
+          authErr.message?.toLowerCase().includes("already exists")
+        ) {
+          return NextResponse.json(
+            { error: "An account with this email already exists. Please sign in instead." },
+            { status: 400 }
+          );
+        }
+        throw authErr;
+      }
+
+      userId = authUser.user.id;
+    } else if (userId) {
+      // Auto-confirm existing user in auth if ID provided
+      await supabase.auth.admin.updateUserById(userId, {
+        email_confirm: true,
+      });
+    }
+
+    // 2. Insert or update in PostgreSQL public.users
     const { data: existingUser } = await supabase
       .from("users")
       .select("*")
@@ -27,7 +62,7 @@ export async function POST(req: NextRequest) {
       const { data: updated, error: updateErr } = await supabase
         .from("users")
         .update({
-          fullName,
+          fullName: fullName.trim(),
           role: assignedRole,
           updatedAt: new Date().toISOString(),
         })
@@ -36,11 +71,11 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (updateErr) throw updateErr;
-      return NextResponse.json({ success: true, user: updated });
+      return NextResponse.json({ success: true, user: updated, userId });
     }
 
     const newUser = {
-      id: id || `user-${Date.now()}`,
+      id: userId || `user-${Date.now()}`,
       email: cleanEmail,
       fullName: fullName.trim(),
       role: assignedRole,
@@ -57,7 +92,7 @@ export async function POST(req: NextRequest) {
 
     if (createErr) throw createErr;
 
-    return NextResponse.json({ success: true, user: created });
+    return NextResponse.json({ success: true, user: created, userId });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to register user in database.";
     return NextResponse.json({ error: message }, { status: 500 });

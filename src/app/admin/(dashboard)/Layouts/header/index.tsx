@@ -9,7 +9,7 @@ export function Header() {
   const { toggleSidebar } = useSidebarContext();
 
   return (
-    <header className="sticky top-0 z-10 flex min-w-0 shrink-0 items-center justify-between gap-2 overflow-visible bg-[#FAF9F7] px-3 py-2 border-b border-[#EBE8E3] shadow-xs dark:bg-gray-dark dark:border-white/10 md:px-4">
+    <header className="sticky top-0 z-40 flex min-w-0 shrink-0 items-center justify-between gap-2 overflow-visible bg-[#FAF9F7] px-3 py-2 border-b border-[#EBE8E3] shadow-xs dark:bg-gray-dark dark:border-white/10 md:px-4">
       <button
         onClick={toggleSidebar}
         className="rounded-lg border border-[#EBE8E3] p-1.5 text-dark-5 hover:text-dark dark:border-white/10 dark:text-gray-400 dark:hover:text-white dark:bg-[#020D1A] hover:dark:bg-[#FFFFFF1A] lg:hidden transition"
