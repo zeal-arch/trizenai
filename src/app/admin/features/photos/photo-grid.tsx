@@ -9,7 +9,7 @@ interface PhotoGridProps {
   selectedIds?: Set<string>;
   isLoading?: boolean;
   canSelect?: boolean;
-  canDelete?: boolean;
+  canDelete?: boolean | ((photo: PhotoItem) => boolean);
   onToggleSelect?: (photo: PhotoItem) => void;
   onPreview?: (photo: PhotoItem) => void;
   onDelete?: (photo: PhotoItem) => void;
@@ -50,18 +50,22 @@ export function PhotoGrid({
 
   return (
     <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-      {photos.map((photo) => (
-        <PhotoCard
-          key={photo.id}
-          photo={photo}
-          isSelected={selectedIds.has(photo.id)}
-          canSelect={canSelect}
-          canDelete={canDelete}
-          onToggleSelect={onToggleSelect}
-          onPreview={onPreview}
-          onDelete={onDelete}
-        />
-      ))}
+      {photos.map((photo) => {
+        const isDeletable = typeof canDelete === "function" ? canDelete(photo) : Boolean(canDelete);
+
+        return (
+          <PhotoCard
+            key={photo.id}
+            photo={photo}
+            isSelected={selectedIds.has(photo.id)}
+            canSelect={canSelect}
+            canDelete={isDeletable}
+            onToggleSelect={onToggleSelect}
+            onPreview={onPreview}
+            onDelete={onDelete}
+          />
+        );
+      })}
     </div>
   );
 }

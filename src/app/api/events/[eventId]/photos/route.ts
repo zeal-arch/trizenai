@@ -222,7 +222,7 @@ export async function DELETE(
 
 
     // If caller is TEAM_MEMBER, verify all requested photos were uploaded by this member
-    if (currentUser && currentUser.role === "TEAM_MEMBER") {
+    if (currentUser.role === "TEAM_MEMBER") {
       const { data: targetPhotos, error: fetchErr } = await supabase
         .from("photos")
         .select("id, uploadedBy")
@@ -231,8 +231,19 @@ export async function DELETE(
 
       if (fetchErr) throw fetchErr;
 
-      const unauthorized = (targetPhotos || []).some(
-        (p) => p.uploadedBy !== currentUser.user.id
+      if (!targetPhotos || targetPhotos.length === 0) {
+        return NextResponse.json(
+          { error: "No matching photos found in this event to delete." },
+          { status: 404 }
+        );
+      }
+
+      const allowedIds = new Set(
+        [currentUser.user.id, (currentUser.user as { authId?: string }).authId].filter(Boolean)
+      );
+
+      const unauthorized = targetPhotos.some(
+        (p) => !p.uploadedBy || !allowedIds.has(p.uploadedBy)
       );
 
       if (unauthorized) {

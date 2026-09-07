@@ -6,6 +6,7 @@ import type { UserRole } from '@/types';
 export interface RoleGuardSuccess {
   user: {
     id: string;
+    authId?: string;
     email: string;
     fullName?: string;
   };
@@ -35,6 +36,7 @@ export async function getCurrentUserOrNull(): Promise<RoleGuardSuccess | null> {
       return {
         user: {
           id: dbUser.id,
+          authId: user.id,
           email: dbUser.email,
           fullName: dbUser.fullName,
         },

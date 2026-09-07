@@ -6,6 +6,7 @@ import type { UserRole } from "@/types";
 
 export interface CurrentUserProfile {
   id: string;
+  authId?: string;
   email: string;
   fullName: string;
   avatarUrl: string;
@@ -59,6 +60,7 @@ export function useCurrentUser() {
 
         const profile: CurrentUserProfile = {
           id: dbUser?.id || authUser.id,
+          authId: authUser.id,
           email: authUser.email || "",
           fullName: dbUser?.fullName || metadataName,
           avatarUrl: dbUser?.avatarUrl || metadataAvatar,

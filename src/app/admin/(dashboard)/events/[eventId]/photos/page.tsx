@@ -146,7 +146,18 @@ export default function EventPhotosPage({
     }
   };
 
+  const isPhotoOwner = useCallback((photo: PhotoItem) => {
+    if (!user) return false;
+    return photo.uploadedBy === user.id || (!!user.authId && photo.uploadedBy === user.authId);
+  }, [user]);
+
   const handleDeletePhoto = async (photo: PhotoItem) => {
+    // Team Members can only delete photos they uploaded themselves
+    if (!isAdmin && !isPhotoOwner(photo)) {
+      toast.error("Permission Denied: Team Members can only delete photos they uploaded themselves.");
+      return;
+    }
+
     try {
       const res = await fetch(`/api/events/${eventId}/photos`, {
         method: "DELETE",
@@ -175,7 +186,7 @@ export default function EventPhotosPage({
     }
   };
 
-  const myPhotos = user ? photos.filter((p) => p.uploadedBy === user.id) : [];
+  const myPhotos = user ? photos.filter(isPhotoOwner) : [];
 
   // Filter based on tab and curation filter
   let displayedPhotos = viewTab === "my_uploads" ? myPhotos : photos;
@@ -309,7 +320,7 @@ export default function EventPhotosPage({
         selectedIds={selectedIds}
         isLoading={loadingPhotos}
         canSelect={isAdmin}
-        canDelete={true}
+        canDelete={(photo) => isAdmin || isPhotoOwner(photo)}
         onToggleSelect={isAdmin ? toggleSelectPhoto : undefined}
         onDelete={handleDeletePhoto}
       />
