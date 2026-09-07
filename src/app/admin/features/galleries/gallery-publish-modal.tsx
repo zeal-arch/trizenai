@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/dialog";
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Label } from "@/components/label";
-import { KeyRound, Share2, Copy, Check, RefreshCw, Loader2, Globe } from "lucide-react";
+import { KeyRound, Share2, Copy, Check, RefreshCw, Loader2, Globe, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface GalleryPublishModalProps {
@@ -18,6 +18,7 @@ interface GalleryPublishModalProps {
     id: string;
     title: string;
     slug: string;
+    pin?: string;
     isPublished: boolean;
   } | null;
   onSuccess: (galleryData: { id: string; slug: string; pin: string }) => void;
@@ -33,8 +34,9 @@ export function GalleryPublishModal({
   onSuccess,
 }: GalleryPublishModalProps) {
   const [title, setTitle] = useState(initialGallery?.title || `${eventTitle} - Official Gallery`);
-  const [pin, setPin] = useState("");
+  const [pin, setPin] = useState(initialGallery?.pin || "");
   const [slug, setSlug] = useState(initialGallery?.slug || eventTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+  const [showPin, setShowPin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [publishedCredentials, setPublishedCredentials] = useState<{
     url: string;
@@ -42,9 +44,27 @@ export function GalleryPublishModal({
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    if (open) {
+      if (initialGallery) {
+        setTitle(initialGallery.title || `${eventTitle} - Official Gallery`);
+        setSlug(initialGallery.slug || eventTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+        if (initialGallery.pin) {
+          setPin(initialGallery.pin);
+        }
+      } else {
+        setTitle(`${eventTitle} - Official Gallery`);
+        setSlug(eventTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+        setPin("123456");
+      }
+      setPublishedCredentials(null);
+    }
+  }, [open, initialGallery, eventTitle]);
+
   const generateRandomPin = () => {
     const randomPin = Math.floor(100000 + Math.random() * 900000).toString();
     setPin(randomPin);
+    setShowPin(true);
   };
 
   const handlePublish = async (e: React.FormEvent) => {
@@ -199,22 +219,37 @@ export function GalleryPublishModal({
                 <button
                   type="button"
                   onClick={generateRandomPin}
-                  className="text-[11px] text-primary dark:text-primary hover:underline flex items-center gap-1 font-medium"
+                  className="text-[11px] text-primary dark:text-primary hover:underline flex items-center gap-1 font-medium cursor-pointer"
                 >
                   <RefreshCw className="size-3" />
-                  <span>Generate PIN</span>
+                  <span>Generate New</span>
                 </button>
               </div>
-              <Input
-                id="gallery-pin"
-                type="text"
-                maxLength={6}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder="e.g. 482917"
-                required={!initialGallery}
-                className="font-mono tracking-widest text-base"
-              />
+              <div className="relative">
+                <Input
+                  id="gallery-pin"
+                  type={showPin ? "text" : "password"}
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder={initialGallery?.pin || "e.g. 482917"}
+                  className="tracking-widest font-mono text-sm pr-10"
+                  required={!initialGallery}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition cursor-pointer"
+                  title={showPin ? "Hide PIN" : "Show PIN"}
+                >
+                  {showPin ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                {initialGallery?.pin
+                  ? `Saved PIN: ${showPin ? initialGallery.pin : "••••••"} (stored in Supabase database; change only if needed).`
+                  : "This PIN will be stored in Supabase and required for client access."}
+              </p>
             </div>
 
             {/* Actions */}

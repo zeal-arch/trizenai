@@ -11,6 +11,12 @@ import {
   User,
   Layers,
   ExternalLink,
+  KeyRound,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+  Share2,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Button } from "@/components/button";
@@ -35,6 +41,13 @@ export default function EventPhotosPage({
   const [filterSelectedOnly, setFilterSelectedOnly] = useState(false);
   const [eventTitle, setEventTitle] = useState("Event Photo Gallery");
   const [gallerySlug, setGallerySlug] = useState<string | null>(null);
+  const [galleryPin, setGalleryPin] = useState<string | null>(null);
+  const [galleryTitle, setGalleryTitle] = useState<string | null>(null);
+  const [galleryId, setGalleryId] = useState<string | null>(null);
+  const [showPin, setShowPin] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPin, setCopiedPin] = useState(false);
+  const [copiedInvite, setCopiedInvite] = useState(false);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
 
   // Photo list state
@@ -61,8 +74,13 @@ export default function EventPhotosPage({
         if (eventData.event?.title) {
           setEventTitle(eventData.event.title);
         }
-        if (eventData.event?.gallery?.slug) {
-          setGallerySlug(eventData.event.gallery.slug);
+        if (eventData.event?.gallery) {
+          setGallerySlug(eventData.event.gallery.slug || null);
+          setGalleryTitle(eventData.event.gallery.title || null);
+          setGalleryId(eventData.event.gallery.id || null);
+          if (eventData.event.gallery.pin) {
+            setGalleryPin(eventData.event.gallery.pin);
+          }
         }
       }
 
@@ -186,6 +204,33 @@ export default function EventPhotosPage({
     }
   };
 
+  const handleCopyLink = () => {
+    if (!gallerySlug) return;
+    const url = `${window.location.origin}/gallery/${gallerySlug}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    toast.success("Gallery link copied to clipboard!");
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleCopyPin = () => {
+    if (!galleryPin) return;
+    navigator.clipboard.writeText(galleryPin);
+    setCopiedPin(true);
+    toast.success("Access PIN copied to clipboard!");
+    setTimeout(() => setCopiedPin(false), 2500);
+  };
+
+  const handleCopyInvite = () => {
+    if (!gallerySlug) return;
+    const url = `${window.location.origin}/gallery/${gallerySlug}`;
+    const text = `📸 ${eventTitle} - Client Photo Gallery\n🔗 Access Link: ${url}\n🔑 Access PIN: ${galleryPin || "123456"}`;
+    navigator.clipboard.writeText(text);
+    setCopiedInvite(true);
+    toast.success("Complete client invite text copied to clipboard!");
+    setTimeout(() => setCopiedInvite(false), 2500);
+  };
+
   const myPhotos = user ? photos.filter(isPhotoOwner) : [];
 
   // Filter based on tab and curation filter
@@ -233,18 +278,6 @@ export default function EventPhotosPage({
             Upload Photos
           </Button>
 
-          {isAdmin && gallerySlug && (
-            <a
-              href={`/gallery/${gallerySlug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-full border border-[#EBE8E3] dark:border-white/15 text-xs font-medium hover:border-primary hover:text-primary transition"
-            >
-              <ExternalLink className="size-3.5" />
-              View Gallery
-            </a>
-          )}
-
           {isAdmin && (
             <Button
               onClick={() => setIsPublishOpen(true)}
@@ -256,6 +289,110 @@ export default function EventPhotosPage({
           )}
         </div>
       </div>
+
+      {/* Live Gallery & PIN Access Banner (Admin Only) */}
+      {isAdmin && gallerySlug && (
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-purple-500/5 p-4 sm:p-5 shadow-xs dark:border-primary/30 dark:from-primary/10 dark:via-primary/15 dark:to-purple-500/10">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  Live Customer Gallery
+                </span>
+                <span className="text-xs text-dark-5 dark:text-dark-6">·</span>
+                <span className="text-xs text-dark-5 dark:text-dark-6 font-mono">/gallery/{gallerySlug}</span>
+              </div>
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                Client Gallery & Access Credentials
+              </h2>
+              <p className="text-xs text-dark-5 dark:text-dark-6 max-w-xl">
+                Share this PIN-protected link with event clients and attendees to view and download their curated photos.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Access PIN Pill */}
+              <div className="flex items-center gap-2 rounded-xl border border-[#EBE8E3] bg-white px-3.5 py-1.5 dark:border-white/15 dark:bg-dark-2 shadow-xs">
+                <KeyRound className="size-4 text-primary" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-dark-5">Access PIN</span>
+                  <span className="font-mono text-xs font-bold tracking-widest text-primary">
+                    {showPin ? galleryPin || "123456" : "••••••"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="ml-1 p-1 text-dark-5 hover:text-dark dark:hover:text-white transition"
+                  title={showPin ? "Hide PIN" : "Show PIN"}
+                >
+                  {showPin ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyPin}
+                  className="p-1 text-dark-5 hover:text-primary transition"
+                  title="Copy PIN"
+                >
+                  {copiedPin ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+                </button>
+              </div>
+
+              {/* Copy Full Invite Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyInvite}
+                className="rounded-xl border-[#EBE8E3] bg-white dark:border-white/15 dark:bg-dark-2 text-xs h-9 px-3 gap-1.5 hover:border-primary hover:text-primary transition shadow-xs"
+              >
+                {copiedInvite ? (
+                  <>
+                    <Check className="size-3.5 text-emerald-600" />
+                    Copied Invite
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="size-3.5 text-primary" />
+                    Copy Client Invite
+                  </>
+                )}
+              </Button>
+
+              {/* Copy Link Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyLink}
+                className="rounded-xl border-[#EBE8E3] bg-white dark:border-white/15 dark:bg-dark-2 text-xs h-9 px-3 gap-1.5 hover:border-primary hover:text-primary transition shadow-xs"
+              >
+                {copiedLink ? (
+                  <>
+                    <Check className="size-3.5 text-emerald-600" />
+                    Copied Link
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-3.5" />
+                    Copy Link
+                  </>
+                )}
+              </Button>
+
+              {/* Open Gallery */}
+              <a
+                href={`/gallery/${gallerySlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-semibold shadow-xs transition"
+              >
+                <ExternalLink className="size-3.5" />
+                Open Gallery
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter and stats bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#EBE8E3] bg-white p-4 shadow-xs dark:border-white/15 dark:bg-gray-dark">
@@ -345,15 +482,27 @@ export default function EventPhotosPage({
           eventId={eventId}
           eventTitle={eventTitle}
           selectedCount={selectedIds.size}
+          initialGallery={
+            gallerySlug
+              ? {
+                  id: galleryId || eventId,
+                  title: galleryTitle || `${eventTitle} - Official Gallery`,
+                  slug: gallerySlug,
+                  pin: galleryPin || "",
+                  isPublished: true,
+                }
+              : null
+          }
           onSuccess={({ slug, pin }) => {
             setIsPublishOpen(false);
             setGallerySlug(slug);
+            setGalleryPin(pin);
             fetchEventData();
             const galleryUrl = `${window.location.origin}/gallery/${slug}`;
             // Copy to clipboard and show the credentials
             navigator.clipboard.writeText(`Gallery URL: ${galleryUrl}\nPIN: ${pin}`).catch(() => {});
             toast.success(
-              `Gallery published! URL: ${galleryUrl} · PIN: ${pin} — copied to clipboard.`,
+              `Gallery updated! URL: ${galleryUrl} · PIN: ${pin} — copied to clipboard.`,
               { duration: 8000 }
             );
           }}

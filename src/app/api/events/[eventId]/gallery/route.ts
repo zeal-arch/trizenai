@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireRole } from "@/lib/permissions/require-role";
+import { requireRole, getCurrentUserOrNull } from "@/lib/permissions/require-role";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +17,8 @@ export async function GET(
   try {
     const { eventId } = await params;
     const supabase = createAdminClient();
+    const currentUser = await getCurrentUserOrNull();
+    const isAdmin = currentUser?.role === "ADMIN";
 
     const { data: gallery, error } = await supabase
       .from("galleries")
@@ -36,12 +38,17 @@ export async function GET(
       .select("*", { count: "exact", head: true })
       .eq("galleryId", gallery.id);
 
+    // Only expose PIN to Admin
+    const safeGallery = {
+      ...gallery,
+      pin: isAdmin ? (gallery.pin || "123456") : undefined,
+      pinHash: undefined,
+      photoCount: count || 0,
+    };
+
     return NextResponse.json({
       success: true,
-      gallery: {
-        ...gallery,
-        photoCount: count || 0,
-      },
+      gallery: safeGallery,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to fetch gallery";
@@ -76,10 +83,12 @@ export async function POST(
       .replace(/[^a-z0-9-]/g, "-")
       .replace(/-+/g, "-");
 
+    const rawPin = pin ? String(pin).trim() : undefined;
+
     // 1. Check if gallery already exists for this event
     const { data: existingGallery } = await supabase
       .from("galleries")
-      .select("id")
+      .select("id, pin")
       .eq("eventId", eventId)
       .maybeSingle();
 
@@ -96,8 +105,9 @@ export async function POST(
         updatedAt: new Date().toISOString(),
       };
 
-      if (pin) {
-        updates.pinHash = hashPin(pin);
+      if (rawPin) {
+        updates.pin = rawPin;
+        updates.pinHash = hashPin(rawPin);
       }
 
       const { data, error } = await supabase
@@ -112,12 +122,14 @@ export async function POST(
     } else {
       // Create new gallery
       galleryId = crypto.randomUUID();
+      const finalPin = rawPin || "123456";
       const newGallery = {
         id: galleryId,
         eventId,
         title: title.trim(),
         slug: cleanSlug,
-        pinHash: pin ? hashPin(pin) : hashPin("123456"),
+        pin: finalPin,
+        pinHash: hashPin(finalPin),
         isPublished: Boolean(isPublished),
         publishedAt: isPublished ? new Date().toISOString() : null,
         viewCount: 0,

@@ -45,6 +45,15 @@ export async function GET(
       .select("userId, assignedAt")
       .eq("eventId", eventId);
 
+    const isAdmin = accessCheck.role === "ADMIN";
+    const safeGallery = gallery
+      ? {
+          ...gallery,
+          pin: isAdmin ? (gallery.pin || "123456") : undefined,
+          pinHash: undefined,
+        }
+      : null;
+
     return NextResponse.json({
       success: true,
       event: {
@@ -52,7 +61,7 @@ export async function GET(
         photos: photos || [],
         photoCount: (photos || []).length,
         selectedCount: (photos || []).filter((p) => p.isSelected).length,
-        gallery: gallery || null,
+        gallery: safeGallery,
         members: members || [],
       },
     });

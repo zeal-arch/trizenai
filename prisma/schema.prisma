@@ -89,6 +89,7 @@ model Gallery {
   eventId     String
   title       String
   slug        String        @unique
+  pin         String?
   pinHash     String
   isPublished Boolean       @default(false)
   publishedAt DateTime?

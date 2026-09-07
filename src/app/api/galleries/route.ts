@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/permissions/require-role";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/galleries - List all customer galleries for admin dashboard
+// GET /api/galleries - List all customer galleries for admin dashboard (ADMIN ONLY)
 export async function GET() {
   try {
+    const authResult = await requireRole(["ADMIN"], "view customer galleries");
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
     const supabase = createAdminClient();
 
     // 1. Fetch galleries
@@ -39,6 +45,7 @@ export async function GET() {
         eventId: gallery.eventId,
         title: gallery.title,
         slug: gallery.slug,
+        pin: gallery.pin || "123456",
         isPublished: gallery.isPublished,
         publishedAt: gallery.publishedAt || gallery.createdAt,
         viewCount: gallery.viewCount || 0,
