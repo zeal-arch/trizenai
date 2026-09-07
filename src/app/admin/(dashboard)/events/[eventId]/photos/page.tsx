@@ -17,6 +17,10 @@ import {
   Eye,
   EyeOff,
   Share2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Download,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Button } from "@/components/button";
@@ -37,6 +41,7 @@ export default function EventPhotosPage({
   const { user, isAdmin, isTeamMember } = useCurrentUser();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
+  const [previewPhotoIndex, setPreviewPhotoIndex] = useState<number | null>(null);
   const [viewTab, setViewTab] = useState<"all" | "my_uploads">("all");
   const [filterSelectedOnly, setFilterSelectedOnly] = useState(false);
   const [eventTitle, setEventTitle] = useState("Event Photo Gallery");
@@ -459,8 +464,81 @@ export default function EventPhotosPage({
         canSelect={isAdmin}
         canDelete={(photo) => isAdmin || isPhotoOwner(photo)}
         onToggleSelect={isAdmin ? toggleSelectPhoto : undefined}
+        onPreview={(photo) => {
+          const idx = displayedPhotos.findIndex((p) => p.id === photo.id);
+          if (idx !== -1) setPreviewPhotoIndex(idx);
+        }}
         onDelete={handleDeletePhoto}
       />
+
+      {/* Admin Photo Preview Lightbox */}
+      {previewPhotoIndex !== null && displayedPhotos[previewPhotoIndex] && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4">
+          <button
+            type="button"
+            onClick={() => setPreviewPhotoIndex(null)}
+            className="absolute top-5 right-5 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition z-50 cursor-pointer"
+            title="Close Preview"
+          >
+            <X className="size-6" />
+          </button>
+
+          {/* Navigation Controls */}
+          {displayedPhotos.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setPreviewPhotoIndex((previewPhotoIndex - 1 + displayedPhotos.length) % displayedPhotos.length)}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition z-50 cursor-pointer"
+                title="Previous Photo"
+              >
+                <ChevronLeft className="size-6" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewPhotoIndex((previewPhotoIndex + 1) % displayedPhotos.length)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition z-50 cursor-pointer"
+                title="Next Photo"
+              >
+                <ChevronRight className="size-6" />
+              </button>
+            </>
+          )}
+
+          {/* Image & Details */}
+          <div className="relative max-h-[85vh] max-w-[90vw] aspect-auto flex flex-col items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={displayedPhotos[previewPhotoIndex].secureUrl || displayedPhotos[previewPhotoIndex].url}
+              alt={displayedPhotos[previewPhotoIndex].filename}
+              className="max-h-[78vh] max-w-[85vw] object-contain rounded-xl shadow-2xl"
+            />
+            <div className="mt-4 flex flex-wrap items-center justify-between w-full max-w-2xl px-3 text-xs text-gray-300 gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-white truncate max-w-xs">{displayedPhotos[previewPhotoIndex].filename}</span>
+                {displayedPhotos[previewPhotoIndex].isSelected && (
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    Selected for Gallery
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <span>{previewPhotoIndex + 1} of {displayedPhotos.length}</span>
+                <a
+                  href={displayedPhotos[previewPhotoIndex].secureUrl || displayedPhotos[previewPhotoIndex].url}
+                  download={displayedPhotos[previewPhotoIndex].filename}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-primary hover:underline font-medium"
+                >
+                  <Download className="size-4" />
+                  <span>Download Original</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <BulkUploadModal

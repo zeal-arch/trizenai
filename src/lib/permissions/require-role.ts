@@ -106,11 +106,13 @@ export async function requireEventAccess(
 
   // Team Member check: Verify assignment in event_members
   const supabase = createAdminClient();
+  const userIds = [current.user.id, current.user.authId].filter(Boolean) as string[];
   const { data: assignment, error } = await supabase
     .from('event_members')
     .select('id')
     .eq('eventId', eventId)
-    .eq('userId', current.user.id)
+    .in('userId', userIds)
+    .limit(1)
     .maybeSingle();
 
   if (error || !assignment) {

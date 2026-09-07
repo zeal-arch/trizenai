@@ -14,10 +14,11 @@ export async function GET() {
 
     // If the authenticated user is a TEAM_MEMBER, filter to only assigned events
     if (currentUser && currentUser.role === "TEAM_MEMBER") {
+      const userIds = [currentUser.user.id, currentUser.user.authId].filter(Boolean) as string[];
       const { data: memberRecords, error: memberErr } = await supabase
         .from("event_members")
         .select("eventId")
-        .eq("userId", currentUser.user.id);
+        .in("userId", userIds);
 
       if (memberErr) {
         throw memberErr;
@@ -74,13 +75,17 @@ export async function GET() {
       .from("event_members")
       .select("eventId");
 
+    const currentAllowedIds = currentUser
+      ? new Set([currentUser.user.id, currentUser.user.authId].filter(Boolean))
+      : new Set();
+
     // Combine event data with aggregates
     const formattedEvents = (events || []).map((event) => {
       const eventPhotos = (photos || []).filter((p) => p.eventId === event.id);
       const totalPhotos = eventPhotos.length;
       const selectedPhotos = eventPhotos.filter((p) => p.isSelected).length;
       const myPhotos = currentUser
-        ? eventPhotos.filter((p) => p.uploadedBy === currentUser.user.id).length
+        ? eventPhotos.filter((p) => p.uploadedBy && currentAllowedIds.has(p.uploadedBy)).length
         : 0;
       const teamCount = (eventMembers || []).filter((m) => m.eventId === event.id).length;
       const gallery = (galleries || []).find((g) => g.eventId === event.id);
