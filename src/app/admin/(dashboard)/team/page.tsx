@@ -53,21 +53,28 @@ export default function TeamPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [team, setTeam] = useState<TeamUser[]>([]);
 
+  // Add Member Modal State
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newRole, setNewRole] = useState<"ADMIN" | "TEAM_MEMBER">("TEAM_MEMBER");
+  const [newAvatar, setNewAvatar] = useState(DEFAULT_AVATARS[0]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete User Dialog State
+  const [userToDelete, setUserToDelete] = useState<TeamUser | null>(null);
+
+  // Credentials Modal State (shown after member is added)
+  interface NewCredentials { email: string; tempPassword: string; fullName: string; }
+  const [newCredentials, setNewCredentials] = useState<NewCredentials | null>(null);
+  const [credCopied, setCredCopied] = useState(false);
+
   useEffect(() => {
     if (!authLoading && isTeamMember) {
       toast.error("Access Restricted: Team management is reserved for Team Admins.");
       router.replace("/admin/events");
     }
   }, [authLoading, isTeamMember, router]);
-
-  if (authLoading || isTeamMember) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-      </div>
-    );
-  }
-
 
   const loadTeam = async () => {
     try {
@@ -84,24 +91,17 @@ export default function TeamPage() {
   };
 
   useEffect(() => {
+    if (authLoading || isTeamMember) return;
     loadTeam();
-  }, []);
+  }, [authLoading, isTeamMember]);
 
-  // Add Member Modal State
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [newRole, setNewRole] = useState<"ADMIN" | "TEAM_MEMBER">("TEAM_MEMBER");
-  const [newAvatar, setNewAvatar] = useState(DEFAULT_AVATARS[0]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Delete User Dialog State
-  const [userToDelete, setUserToDelete] = useState<TeamUser | null>(null);
-
-  // Credentials Modal State (shown after member is added)
-  interface NewCredentials { email: string; tempPassword: string; fullName: string; }
-  const [newCredentials, setNewCredentials] = useState<NewCredentials | null>(null);
-  const [credCopied, setCredCopied] = useState(false);
+  if (authLoading || isTeamMember) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+      </div>
+    );
+  }
 
   const copyCredentials = () => {
     if (!newCredentials) return;

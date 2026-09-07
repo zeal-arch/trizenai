@@ -43,16 +43,9 @@ export default function GalleriesPage() {
     }
   }, [authLoading, isTeamMember, router]);
 
-  if (authLoading || isTeamMember) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-      </div>
-    );
-  }
-
-
   useEffect(() => {
+    if (authLoading || isTeamMember) return;
+
     async function loadGalleries() {
       try {
         const res = await fetch("/api/galleries");
@@ -79,7 +72,15 @@ export default function GalleriesPage() {
       }
     }
     loadGalleries();
-  }, []);
+  }, [authLoading, isTeamMember]);
+
+  if (authLoading || isTeamMember) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+      </div>
+    );
+  }
 
   const copyShareLink = (slug: string, id: string) => {
     const url = `${window.location.origin}/gallery/${slug}`;
