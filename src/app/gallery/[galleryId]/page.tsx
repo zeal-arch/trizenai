@@ -75,8 +75,8 @@ export default function PublicGalleryPage({
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-brand-cream text-brand-nearBlack px-4 py-8">
-      <div className="w-full max-w-sm mx-auto bg-white p-8 rounded-3xl border border-brand-lightGray shadow-[0_4px_25px_rgba(0,0,0,0.04)] text-center animate-in fade-in duration-500">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8F9FE] text-brand-nearBlack px-4 py-8">
+      <div className="w-full max-w-sm mx-auto bg-white p-8 rounded-3xl border border-[#E7EAF6] shadow-[0_10px_35px_rgba(142,148,242,0.08)] text-center animate-in fade-in duration-500">
         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-lavenderGrey">
           Protected Gallery
         </span>
@@ -99,7 +99,7 @@ export default function PublicGalleryPage({
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ""))}
               placeholder="••••••"
-              className="w-full h-12 text-center font-mono text-xl tracking-[0.4em] font-semibold text-brand-nearBlack bg-brand-cream/70 border border-brand-lightGray focus:border-brand-softPeriwinkle focus:bg-white rounded-xl focus:outline-none transition"
+              className="w-full h-12 text-center font-mono text-xl tracking-[0.4em] font-semibold text-brand-nearBlack bg-[#F8F9FE] border border-[#D6DAF0] focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 rounded-xl focus:outline-none transition"
               autoFocus
               required
             />
@@ -114,7 +114,7 @@ export default function PublicGalleryPage({
           <button
             type="submit"
             disabled={isVerifying || pin.length < 4}
-            className="w-full h-11 bg-brand-softPeriwinkle hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-xl text-xs uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-2"
+            className="w-full h-11 bg-primary hover:opacity-90 disabled:opacity-50 text-white font-semibold rounded-xl text-xs uppercase tracking-wider transition cursor-pointer flex items-center justify-center gap-2 shadow-md shadow-primary/20"
           >
             {isVerifying ? (
               <>
@@ -127,7 +127,7 @@ export default function PublicGalleryPage({
           </button>
         </form>
 
-        <div className="mt-8 pt-4 border-t border-brand-lightGray/60 text-center">
+        <div className="mt-8 pt-4 border-t border-[#E7EAF6] text-center">
           <p className="text-[10px] text-brand-warmGray font-light">
             TrizenAI Photo Sharing Platform
           </p>

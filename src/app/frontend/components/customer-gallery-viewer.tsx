@@ -44,13 +44,16 @@ export function CustomerGalleryViewer({
   };
 
   return (
-    <div className="min-h-screen bg-[#0E0E10] text-white">
+    <div className="min-h-screen bg-[#F8F9FE] text-gray-900">
       {/* Header */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-[#0E0E10]/80 backdrop-blur-md px-6 py-4">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[#E7EAF6] bg-[#F8F9FE]/90 backdrop-blur-md px-6 py-4 shadow-xs">
         <div>
-          <h1 className="text-lg md:text-xl font-bold tracking-tight text-white">{title}</h1>
+          <h1 className="text-lg md:text-2xl font-bold tracking-tight text-gray-900">{title}</h1>
           {eventTitle && (
-            <p className="text-xs text-gray-400 mt-0.5">{eventTitle} • {photos.length} curated photograph{photos.length !== 1 ? "s" : ""}{publishedAt ? ` • ${new Date(publishedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : ""}</p>
+            <p className="text-xs text-gray-500 mt-0.5 font-normal">
+              {eventTitle} • {photos.length} curated photograph{photos.length !== 1 ? "s" : ""}
+              {publishedAt ? ` • ${new Date(publishedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : ""}
+            </p>
           )}
         </div>
 
@@ -60,9 +63,9 @@ export function CustomerGalleryViewer({
               type="button"
               variant="outline"
               onClick={onLockGallery}
-              className="border-white/20 bg-white/5 hover:bg-white/10 text-white text-xs flex items-center gap-1.5"
+              className="border-[#D6DAF0] bg-white hover:bg-primary-50 text-gray-700 hover:text-primary transition-all text-xs font-medium flex items-center gap-1.5 shadow-xs rounded-xl px-3.5 py-2 cursor-pointer"
             >
-              <Lock className="size-3.5" />
+              <Lock className="size-3.5 text-primary" />
               <span>Lock Gallery</span>
             </Button>
           )}
@@ -72,18 +75,20 @@ export function CustomerGalleryViewer({
       {/* Photo Grid */}
       <main className="max-w-7xl mx-auto p-6 md:p-8">
         {photos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center text-gray-500">
-            <div className="text-5xl mb-4">🖼️</div>
-            <p className="text-base font-medium text-gray-400">No photos in this gallery yet.</p>
-            <p className="text-xs mt-1 text-gray-600">The photographer has not added any photos.</p>
+          <div className="flex flex-col items-center justify-center h-80 text-center rounded-3xl border border-dashed border-[#D6DAF0] bg-white/60 p-8 shadow-xs">
+            <div className="size-16 rounded-2xl bg-primary-50 flex items-center justify-center text-primary text-2xl mb-4 shadow-inner">
+              🖼️
+            </div>
+            <p className="text-base font-semibold text-gray-800">No photos in this gallery yet.</p>
+            <p className="text-xs mt-1 text-gray-500">The photographer has not added any photos to this curated collection.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {photos.map((photo, idx) => (
               <div
                 key={photo.id}
                 onClick={() => setActivePhotoIndex(idx)}
-                className="group relative aspect-4/3 overflow-hidden rounded-2xl bg-white/5 cursor-pointer transition-transform duration-300 hover:scale-[1.02] shadow-lg"
+                className="group relative aspect-4/3 overflow-hidden rounded-2xl bg-white border border-[#E7EAF6] cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl shadow-xs"
               >
                 <Image
                   src={photo.thumbnailUrl || photo.url}
@@ -91,16 +96,16 @@ export function CustomerGalleryViewer({
                   fill
                   unoptimized
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                  className="object-cover transition-opacity duration-300 group-hover:opacity-90"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-4">
-                  <span className="text-xs font-medium text-white truncate max-w-[160px]">{photo.filename}</span>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-4">
+                  <span className="text-xs font-medium text-white truncate max-w-[160px] drop-shadow-sm">{photo.filename}</span>
                   <div className="flex items-center gap-2">
                     <a
                       href={photo.url}
                       download={photo.filename}
                       onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-xs transition text-white"
+                      className="p-1.5 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur-xs transition text-white"
                       title="Download Photo"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -109,7 +114,7 @@ export function CustomerGalleryViewer({
                     </a>
                     <button
                       type="button"
-                      className="p-1.5 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-xs transition text-white"
+                      className="p-1.5 rounded-full bg-white/25 hover:bg-white/40 backdrop-blur-xs transition text-white"
                       title="View Fullscreen"
                     >
                       <Eye className="size-3.5" />
