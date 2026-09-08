@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -10,21 +11,32 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   try {
+    const authClient = await createServerClient();
+    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+
+    if (authError || !authUser?.email) {
+      return NextResponse.json({ error: "Unauthorized: Authentication required." }, { status: 401 });
+    }
+
     const supabase = createAdminClient();
-    const { id, email, fullName, avatarUrl, role } = await req.json();
+    const { email, fullName, avatarUrl } = await req.json();
 
     if (!email) {
       return NextResponse.json({ error: "Email is required." }, { status: 400 });
     }
 
-    const assignedRole = role === "TEAM_MEMBER" ? "TEAM_MEMBER" : "ADMIN";
-    const name = fullName || email.split("@")[0] || "User";
+    const cleanEmail = String(email).toLowerCase().trim();
+    if (cleanEmail !== authUser.email.toLowerCase().trim()) {
+      return NextResponse.json({ error: "The sync email must match the authenticated account." }, { status: 403 });
+    }
+
+    const name = fullName || authUser.user_metadata?.full_name || cleanEmail.split("@")[0] || "User";
 
     // 1. Check if user already exists
     const { data: existingUser } = await supabase
       .from("users")
       .select("*")
-      .eq("email", email.toLowerCase().trim())
+      .eq("email", cleanEmail)
       .maybeSingle();
 
     if (existingUser) {
@@ -51,11 +63,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Create new user record
+    const metadataRole = authUser.user_metadata?.role === "ADMIN" ? "ADMIN" : "TEAM_MEMBER";
     const newUser = {
-      id: id || `user-${Date.now()}`,
-      email: email.toLowerCase().trim(),
+      id: authUser.id,
+      email: cleanEmail,
       fullName: name,
-      role: assignedRole,
+      role: metadataRole,
       avatarUrl: avatarUrl || "/image/user/user-01.png",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

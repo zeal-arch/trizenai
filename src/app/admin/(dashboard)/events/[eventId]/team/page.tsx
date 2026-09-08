@@ -181,7 +181,7 @@ export default function EventTeamPage({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <Image
-                        src={member.avatarUrl!}
+                        src={member.avatarUrl || "/image/user/user-01.png"}
                         alt={member.fullName}
                         width={36}
                         height={36}

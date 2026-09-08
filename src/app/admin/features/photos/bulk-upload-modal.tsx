@@ -94,7 +94,7 @@ export function BulkUploadModal({
           // 1. Upload file to Cloudinary via server endpoint
           const formData = new FormData();
           formData.append("file", item.file);
-          formData.append("folder", `trizenai-events/${eventId}`);
+          formData.append("eventId", eventId);
 
           const uploadRes = await fetch("/api/upload", {
             method: "POST",

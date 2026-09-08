@@ -1,9 +1,9 @@
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 
 // Configure Cloudinary server-side
-const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'jttdbmtt';
-const apiKey = process.env.CLOUDINARY_API_KEY || '188187544151153';
-const apiSecret = process.env.CLOUDINARY_API_SECRET || 'vMlk7W31smhMXo4qDP8UXIaPTXU';
+const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME;
+const apiKey = process.env.CLOUDINARY_API_KEY;
+const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
 cloudinary.config({
   cloud_name: cloudName,

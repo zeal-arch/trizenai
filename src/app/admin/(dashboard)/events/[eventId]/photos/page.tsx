@@ -227,9 +227,12 @@ export default function EventPhotosPage({
   };
 
   const handleCopyInvite = () => {
-    if (!gallerySlug) return;
+    if (!gallerySlug || !galleryPin) {
+      toast.error("Enter or rotate the gallery PIN before copying the invite.");
+      return;
+    }
     const url = `${window.location.origin}/gallery/${gallerySlug}`;
-    const text = `📸 ${eventTitle} - Client Photo Gallery\n🔗 Access Link: ${url}\n🔑 Access PIN: ${galleryPin || "123456"}`;
+    const text = `📸 ${eventTitle} - Client Photo Gallery\n🔗 Access Link: ${url}\n🔑 Access PIN: ${galleryPin}`;
     navigator.clipboard.writeText(text);
     setCopiedInvite(true);
     toast.success("Complete client invite text copied to clipboard!");
@@ -243,6 +246,29 @@ export default function EventPhotosPage({
   if (filterSelectedOnly && isAdmin) {
     displayedPhotos = displayedPhotos.filter((p) => selectedIds.has(p.id));
   }
+
+  useEffect(() => {
+    if (previewPhotoIndex === null) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setPreviewPhotoIndex(null);
+      } else if (e.key === "ArrowRight") {
+        setPreviewPhotoIndex((prev) =>
+          prev !== null && displayedPhotos.length > 0 ? (prev + 1) % displayedPhotos.length : null
+        );
+      } else if (e.key === "ArrowLeft") {
+        setPreviewPhotoIndex((prev) =>
+          prev !== null && displayedPhotos.length > 0
+            ? (prev - 1 + displayedPhotos.length) % displayedPhotos.length
+            : null
+        );
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewPhotoIndex, displayedPhotos.length]);
 
   return (
     <div className="space-y-6">
@@ -323,7 +349,7 @@ export default function EventPhotosPage({
                 <div className="flex flex-col">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-dark-5">Access PIN</span>
                   <span className="font-mono text-xs font-bold tracking-widest text-primary">
-                    {showPin ? galleryPin || "123456" : "••••••"}
+                    {showPin ? galleryPin || "Rotate PIN to reveal" : "••••••"}
                   </span>
                 </div>
                 <button
@@ -589,4 +615,3 @@ export default function EventPhotosPage({
     </div>
   );
 }
-

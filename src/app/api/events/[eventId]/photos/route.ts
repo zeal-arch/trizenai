@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireRole, getCurrentUserOrNull, requireEventAccess } from "@/lib/permissions/require-role";
+import { requireRole, requireEventAccess } from "@/lib/permissions/require-role";
+import { deleteFromCloudinary } from "@/lib/cloudinary/server";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,11 @@ export async function GET(
       .select("*")
       .eq("eventId", eventId)
       .order("createdAt", { ascending: false });
+
+    if (accessCheck.role === "TEAM_MEMBER") {
+      const userIds = [accessCheck.user.id, accessCheck.user.authId].filter(Boolean) as string[];
+      query = query.in("uploadedBy", userIds);
+    }
 
     if (selectedOnly) {
       query = query.eq("isSelected", true);
@@ -81,24 +87,29 @@ export async function POST(
     const supabase = createAdminClient();
     const currentUser = accessCheck;
 
-    const {
-      photos, // Array of photos or single photo
-      uploadedBy,
-    } = body;
+    const { photos } = body;
 
-    const rawPhotos = Array.isArray(photos) ? photos : [body];
+    const rawPhotos = Array.isArray(photos) ? photos : [];
 
     if (!rawPhotos || rawPhotos.length === 0) {
       return NextResponse.json({ error: "No photo metadata provided" }, { status: 400 });
     }
 
-    let defaultUploader = uploadedBy;
-    if (!defaultUploader) {
-      defaultUploader = currentUser?.user.id;
+    if (rawPhotos.length > 100) {
+      return NextResponse.json({ error: "A maximum of 100 photos can be saved per request." }, { status: 400 });
     }
-    if (!defaultUploader) {
-      const { data: user } = await supabase.from("users").select("id").limit(1).maybeSingle();
-      defaultUploader = user?.id || "admin-system";
+
+    const invalidPhoto = rawPhotos.find((p) => {
+      const secureUrl = typeof p?.secureUrl === "string" ? p.secureUrl : "";
+      const fileSize = Number(p?.fileSize ?? p?.bytes);
+      return !p || typeof p.publicId !== "string" || !p.publicId.trim() ||
+        !/^https:\/\/res\.cloudinary\.com\//.test(secureUrl) ||
+        !Number.isFinite(fileSize) || fileSize <= 0 || fileSize > 15 * 1024 * 1024 ||
+        typeof p.filename !== "string" || !p.filename.trim();
+    });
+
+    if (invalidPhoto) {
+      return NextResponse.json({ error: "Each photo must contain a valid Cloudinary asset and file metadata." }, { status: 400 });
     }
 
     const photoInserts = rawPhotos.map((p) => {
@@ -106,18 +117,18 @@ export async function POST(
       return {
         id: photoId,
         eventId,
-        uploadedBy: p.uploadedBy || defaultUploader,
-        publicId: p.publicId || photoId,
-        url: p.url || p.secureUrl,
-        secureUrl: p.secureUrl || p.url,
-        thumbnailUrl: p.thumbnailUrl || p.secureUrl || p.url,
-        filename: p.filename || "untitled.jpg",
-        fileSize: Number(p.fileSize || p.bytes || 0),
+        uploadedBy: currentUser.user.id,
+        publicId: p.publicId,
+        url: p.secureUrl,
+        secureUrl: p.secureUrl,
+        thumbnailUrl: p.thumbnailUrl || p.secureUrl,
+        filename: p.filename.trim(),
+        fileSize: Number(p.fileSize ?? p.bytes),
         width: p.width ? Number(p.width) : null,
         height: p.height ? Number(p.height) : null,
-        isSelected: p.isSelected ?? false,
+        isSelected: currentUser.role === "ADMIN" && p.isSelected === true,
         tags: Array.isArray(p.tags) ? p.tags : [],
-        createdAt: p.createdAt || new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
     });
 
@@ -254,10 +265,17 @@ export async function DELETE(
       }
     }
 
-    // Delete gallery photo links first
+    // 1. Fetch publicIds for Cloudinary cleanup
+    const { data: photosToDelete } = await supabase
+      .from("photos")
+      .select("publicId")
+      .in("id", photoIds)
+      .eq("eventId", eventId);
+
+    // 2. Delete gallery photo links first
     await supabase.from("gallery_photos").delete().in("photoId", photoIds);
 
-    // Delete photos from table
+    // 3. Delete photos from table
     const { error } = await supabase
       .from("photos")
       .delete()
@@ -265,6 +283,15 @@ export async function DELETE(
       .eq("eventId", eventId);
 
     if (error) throw error;
+
+    // 4. Best-effort cleanup from Cloudinary
+    if (photosToDelete && photosToDelete.length > 0) {
+      Promise.allSettled(
+        photosToDelete
+          .filter((p) => p.publicId && !p.publicId.startsWith("demo_") && !p.publicId.startsWith("http"))
+          .map((p) => deleteFromCloudinary(p.publicId))
+      ).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,
@@ -275,4 +302,3 @@ export async function DELETE(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

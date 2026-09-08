@@ -156,6 +156,32 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "userId query param is required" }, { status: 400 });
     }
 
+    // Prevent self-deletion
+    if (userId === authResult.user.id || (authResult.user.authId && userId === authResult.user.authId)) {
+      return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 });
+    }
+
+    // Check if target is an Admin and prevent deleting the only admin
+    const { data: targetUser } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (targetUser?.role === "ADMIN") {
+      const { count: adminCount } = await supabase
+        .from("users")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "ADMIN");
+
+      if ((adminCount || 0) <= 1) {
+        return NextResponse.json(
+          { error: "Cannot delete the only remaining Administrator on the platform." },
+          { status: 400 }
+        );
+      }
+    }
+
     // Clean up event memberships
     await supabase.from("event_members").delete().eq("userId", userId);
 

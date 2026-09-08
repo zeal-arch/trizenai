@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Download, Eye, X, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { Button } from "@/components/button";
@@ -33,15 +33,32 @@ export function CustomerGalleryViewer({
 
   const activePhoto = activePhotoIndex !== null ? photos[activePhotoIndex] : null;
 
-  const nextPhoto = () => {
-    if (activePhotoIndex === null) return;
+  const nextPhoto = useCallback(() => {
+    if (activePhotoIndex === null || photos.length === 0) return;
     setActivePhotoIndex((activePhotoIndex + 1) % photos.length);
-  };
+  }, [activePhotoIndex, photos.length]);
 
-  const prevPhoto = () => {
-    if (activePhotoIndex === null) return;
+  const prevPhoto = useCallback(() => {
+    if (activePhotoIndex === null || photos.length === 0) return;
     setActivePhotoIndex((activePhotoIndex - 1 + photos.length) % photos.length);
-  };
+  }, [activePhotoIndex, photos.length]);
+
+  useEffect(() => {
+    if (activePhotoIndex === null) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActivePhotoIndex(null);
+      } else if (e.key === "ArrowRight") {
+        nextPhoto();
+      } else if (e.key === "ArrowLeft") {
+        prevPhoto();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activePhotoIndex, nextPhoto, prevPhoto]);
 
   return (
     <div className="min-h-screen bg-[#F8F9FE] text-gray-900">

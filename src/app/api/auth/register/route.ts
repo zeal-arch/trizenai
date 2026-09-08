@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
         .from("users")
         .update({
           fullName: fullName.trim(),
-          role: assignedRole,
+          role: existingUser.role || assignedRole,
           updatedAt: new Date().toISOString(),
         })
         .eq("id", existingUser.id)

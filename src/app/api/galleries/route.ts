@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole } from "@/lib/permissions/require-role";
+import { decryptGalleryPin } from "@/lib/security/gallery-pin";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export async function GET() {
         eventId: gallery.eventId,
         title: gallery.title,
         slug: gallery.slug,
-        pin: gallery.pin || "123456",
+        pin: decryptGalleryPin(gallery.pin),
         isPublished: gallery.isPublished,
         publishedAt: gallery.publishedAt || gallery.createdAt,
         viewCount: gallery.viewCount || 0,

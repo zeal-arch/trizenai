@@ -11,7 +11,7 @@ Deploy URL: https://trizenai.vercel.app (update after deployment)
 | Role | Email | Password |
 |---|---|---|
 | Admin / Lead | admin@trizen-ai.com | AdminPass@2026 |
-| Team Member | member@trizen-ai.com | MemberPass@2026 |
+| Team Member | photographer@trizen-ai.com | TeamPass@2026 |
 
 Demo Gallery URL and PIN are generated when Admin publishes a gallery from the Events page.
 
@@ -31,11 +31,11 @@ TrizenAI Photo Platform enables photography teams to collaboratively manage even
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 15 (App Router) |
+| Framework | Next.js 16 (App Router) |
 | Language | TypeScript |
 | Database | PostgreSQL via Supabase |
 | Auth | Supabase Auth (email/password) |
-| ORM / Schema | Prisma |
+| Database access | Supabase server client; Prisma schema/seed utilities |
 | File Storage | Cloudinary |
 | Styling | Vanilla CSS + custom design tokens |
 | Deployment | Vercel |
@@ -132,6 +132,7 @@ CLOUDINARY_CLOUD_NAME=your-cloud-name
 CLOUDINARY_API_KEY=your-api-key
 CLOUDINARY_API_SECRET=your-api-secret
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloud-name
+GALLERY_PIN_ENCRYPTION_KEY=generate-a-long-random-server-secret
 
 ### Installation
 
@@ -158,8 +159,8 @@ Open http://localhost:3000 — Admin panel at http://localhost:3000/admin/login
 ## Security
 
 - RBAC: All API routes enforce role-based access via requireRole() middleware
-- Row Level Security: Supabase RLS policies protect all tables
-- PIN Hashing: Gallery PINs are SHA-256 hashed before storage
+- Server-side RBAC: API routes verify the Supabase session and event membership before using the service-role client
+- PIN Security: Gallery PIN hashes are stored for verification and the recoverable PIN is encrypted at rest
 - No Secrets in Git: All credentials are environment variables
 
 ---
@@ -168,7 +169,7 @@ Open http://localhost:3000 — Admin panel at http://localhost:3000/admin/login
 
     npm test
 
-Tests cover authentication/authorization, gallery PIN verification, and photo access controls.
+Tests cover role rules, gallery PIN verification, photo validation, and the customer gallery flow. Production verification should also include authenticated API integration tests against a test Supabase project.
 
 ---
 
@@ -177,6 +178,7 @@ Tests cover authentication/authorization, gallery PIN verification, and photo ac
 - Team members must be provisioned by an Admin (no self-registration)
 - Gallery expiration is not yet implemented (optional bonus feature)
 - Email invitations are not sent - admin shares credentials manually after provisioning
+- Existing galleries created before encrypted PIN storage may need their PIN rotated from the event page
 
 ---
 

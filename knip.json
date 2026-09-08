@@ -9,8 +9,8 @@
   },
   "project": ["src/**/*.{js,jsx,ts,tsx}"],
   "ignore": [
-    "src/components/**",
     "src/lib/cloudinary/**"
   ],
+  "ignoreDependencies": ["tw-animate-css"],
   "ignoreExportsUsedInFile": true
 }

@@ -4,9 +4,11 @@ import "@/styles/layout-utilities.css";
 
 import type { Metadata } from "next";
 import type { PropsWithChildren } from "react";
+import { redirect } from "next/navigation";
 import { Providers } from "./providers";
 import { Header } from "@/admin/(dashboard)/Layouts/header";
 import { SidebarWrapper } from "./_components/sidebar-wrapper";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +20,14 @@ export const metadata: Metadata = {
   description: "Admin dashboard section integrated into the main Next.js app.",
 };
 
-export default function AdminLayout({ children }: PropsWithChildren) {
+export default async function AdminLayout({ children }: PropsWithChildren) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/admin/login");
+  }
+
   return (
     <Providers>
       <div data-admin-layout className="font-satoshi flex h-screen w-full overflow-hidden">

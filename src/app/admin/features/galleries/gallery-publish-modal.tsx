@@ -49,13 +49,11 @@ export function GalleryPublishModal({
       if (initialGallery) {
         setTitle(initialGallery.title || `${eventTitle} - Official Gallery`);
         setSlug(initialGallery.slug || eventTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
-        if (initialGallery.pin) {
-          setPin(initialGallery.pin);
-        }
+        setPin(initialGallery.pin || "");
       } else {
         setTitle(`${eventTitle} - Official Gallery`);
         setSlug(eventTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
-        setPin("123456");
+        setPin("");
       }
       setPublishedCredentials(null);
     }
@@ -69,8 +67,13 @@ export function GalleryPublishModal({
 
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || (!initialGallery && pin.length < 4)) {
-      toast.error("Please provide a title and at least a 4-digit PIN.");
+    if (!title.trim()) {
+      toast.error("Please provide a gallery title.");
+      return;
+    }
+
+    if ((!initialGallery && !/^\d{4,6}$/.test(pin)) || (pin && !/^\d{4,6}$/.test(pin))) {
+      toast.error("PIN must contain 4 to 6 digits.");
       return;
     }
 
@@ -82,7 +85,7 @@ export function GalleryPublishModal({
         body: JSON.stringify({
           title,
           slug,
-          pin,
+          ...(pin ? { pin } : {}),
           isPublished: true,
         }),
       });
@@ -98,11 +101,11 @@ export function GalleryPublishModal({
 
       setPublishedCredentials({
         url: galleryUrl,
-        pin: pin || "Existing PIN",
+        pin: pin || initialGallery?.pin || "",
       });
 
       toast.success("Gallery published successfully!");
-      onSuccess({ id: result.gallery.id, slug: result.gallery.slug, pin });
+      onSuccess({ id: result.gallery.id, slug: result.gallery.slug, pin: pin || initialGallery?.pin || "" });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Error publishing gallery";
       toast.error(errorMessage);
@@ -247,8 +250,8 @@ export function GalleryPublishModal({
               </div>
               <p className="text-[11px] text-gray-400 dark:text-gray-500">
                 {initialGallery?.pin
-                  ? `Saved PIN: ${showPin ? initialGallery.pin : "••••••"} (stored in Supabase database; change only if needed).`
-                  : "This PIN will be stored in Supabase and required for client access."}
+                  ? `Saved PIN: ${showPin ? initialGallery.pin : "••••••"} (encrypted at rest; leave blank to keep it unchanged).`
+                  : "The PIN is encrypted at rest and required for client access."}
               </p>
             </div>
 

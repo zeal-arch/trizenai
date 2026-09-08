@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireRole, requireEventAccess } from "@/lib/permissions/require-role";
+import { decryptGalleryPin } from "@/lib/security/gallery-pin";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +29,18 @@ export async function GET(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    const { data: photos } = await supabase
+    let photosQuery = supabase
       .from("photos")
       .select("*")
       .eq("eventId", eventId)
       .order("createdAt", { ascending: false });
+
+    if (accessCheck.role === "TEAM_MEMBER") {
+      const userIds = [accessCheck.user.id, accessCheck.user.authId].filter(Boolean) as string[];
+      photosQuery = photosQuery.in("uploadedBy", userIds);
+    }
+
+    const { data: photos } = await photosQuery;
 
     const { data: gallery } = await supabase
       .from("galleries")
@@ -49,7 +57,7 @@ export async function GET(
     const safeGallery = gallery
       ? {
           ...gallery,
-          pin: isAdmin ? (gallery.pin || "123456") : undefined,
+          pin: isAdmin ? decryptGalleryPin(gallery.pin) : undefined,
           pinHash: undefined,
         }
       : null;
@@ -157,4 +165,3 @@ export async function DELETE(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

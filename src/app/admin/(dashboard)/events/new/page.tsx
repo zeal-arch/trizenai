@@ -64,7 +64,7 @@ export default function CreateEventPage() {
     setIsSubmitting(true);
     try {
       const fullDateTime = time ? `${date}T${time}:00` : `${date}T00:00:00`;
-      const coverImage = selectedCoverPhoto?.previewUrl || "/image/cover/cover-01.png";
+      const initialCover = "/image/cover/cover-01.png";
 
       const res = await fetch("/api/events", {
         method: "POST",
@@ -74,7 +74,7 @@ export default function CreateEventPage() {
           description: description || category || undefined,
           date: fullDateTime,
           location: location || "Studio Venue",
-          coverImage,
+          coverImage: initialCover,
         }),
       });
 
@@ -89,12 +89,13 @@ export default function CreateEventPage() {
       // If local photos were added, upload and save metadata
       if (localPhotos.length > 0) {
         toast.info(`Uploading ${localPhotos.length} photo(s)...`);
+        let finalCoverUrl: string | null = null;
         
         for (const localPhoto of localPhotos) {
           try {
             const formData = new FormData();
             formData.append("file", localPhoto.file);
-            formData.append("folder", `trizenai-events/${newEventId}`);
+            formData.append("eventId", newEventId);
 
             const uploadRes = await fetch("/api/upload", {
               method: "POST",
@@ -103,6 +104,11 @@ export default function CreateEventPage() {
 
             if (uploadRes.ok) {
               const uploadData = await uploadRes.json();
+              const isCoverCandidate = !finalCoverUrl || localPhoto.id === coverPhotoId;
+              if (isCoverCandidate) {
+                finalCoverUrl = uploadData.asset.secureUrl;
+              }
+
               await fetch(`/api/events/${newEventId}/photos`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -128,9 +134,18 @@ export default function CreateEventPage() {
             // continue uploading others
           }
         }
+
+        // Update event with the real uploaded Cloudinary cover image
+        if (finalCoverUrl) {
+          await fetch(`/api/events/${newEventId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ coverImage: finalCoverUrl }),
+          });
+        }
       }
 
-      toast.success(`Event "${title}" created in database successfully!`);
+      toast.success(`Event "${title}" created successfully!`);
       router.push(`/admin/events/${newEventId}/photos`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error creating event";

@@ -6,7 +6,6 @@ import {
   useRef,
   Dispatch,
   SetStateAction,
-  type PropsWithChildren,
 } from "react";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { cn } from "@/lib/utils";
@@ -126,8 +125,3 @@ export function DropdownTrigger({ children, className }: DropdownTriggerProps) {
   );
 }
 
-export function DropdownClose({ children }: PropsWithChildren) {
-  const { handleClose } = useDropdownContext();
-
-  return <div onClick={handleClose}>{children}</div>;
-}

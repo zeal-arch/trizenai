@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireRole, getCurrentUserOrNull } from "@/lib/permissions/require-role";
+import { requireEventAccess, requireRole } from "@/lib/permissions/require-role";
 import crypto from "crypto";
+import {
+  decryptGalleryPin,
+  encryptGalleryPin,
+  hashGalleryPin,
+  isValidGalleryPin,
+} from "@/lib/security/gallery-pin";
 
 export const dynamic = "force-dynamic";
-
-function hashPin(pin: string): string {
-  return crypto.createHash("sha256").update(pin.trim()).digest("hex");
-}
 
 // GET /api/events/[eventId]/gallery - Get gallery for event
 export async function GET(
@@ -17,8 +19,12 @@ export async function GET(
   try {
     const { eventId } = await params;
     const supabase = createAdminClient();
-    const currentUser = await getCurrentUserOrNull();
-    const isAdmin = currentUser?.role === "ADMIN";
+    const accessCheck = await requireEventAccess(eventId, "view this gallery");
+    if (accessCheck instanceof NextResponse) {
+      return accessCheck;
+    }
+
+    const isAdmin = accessCheck.role === "ADMIN";
 
     const { data: gallery, error } = await supabase
       .from("galleries")
@@ -41,7 +47,7 @@ export async function GET(
     // Only expose PIN to Admin
     const safeGallery = {
       ...gallery,
-      pin: isAdmin ? (gallery.pin || "123456") : undefined,
+      pin: isAdmin ? decryptGalleryPin(gallery.pin) : undefined,
       pinHash: undefined,
       photoCount: count || 0,
     };
@@ -83,7 +89,11 @@ export async function POST(
       .replace(/[^a-z0-9-]/g, "-")
       .replace(/-+/g, "-");
 
-    const rawPin = pin ? String(pin).trim() : undefined;
+    const rawPin = pin === undefined || pin === null || pin === "" ? undefined : String(pin).trim();
+
+    if (rawPin !== undefined && !isValidGalleryPin(rawPin)) {
+      return NextResponse.json({ error: "PIN must contain 4 to 6 digits." }, { status: 400 });
+    }
 
     // 1. Check if gallery already exists for this event
     const { data: existingGallery } = await supabase
@@ -106,8 +116,8 @@ export async function POST(
       };
 
       if (rawPin) {
-        updates.pin = rawPin;
-        updates.pinHash = hashPin(rawPin);
+        updates.pin = encryptGalleryPin(rawPin);
+        updates.pinHash = hashGalleryPin(rawPin);
       }
 
       const { data, error } = await supabase
@@ -122,14 +132,18 @@ export async function POST(
     } else {
       // Create new gallery
       galleryId = crypto.randomUUID();
-      const finalPin = rawPin || "123456";
+      if (!rawPin) {
+        return NextResponse.json({ error: "A 4 to 6 digit PIN is required for a new gallery." }, { status: 400 });
+      }
+
+      const finalPin = rawPin;
       const newGallery = {
         id: galleryId,
         eventId,
         title: title.trim(),
         slug: cleanSlug,
-        pin: finalPin,
-        pinHash: hashPin(finalPin),
+        pin: encryptGalleryPin(finalPin),
+        pinHash: hashGalleryPin(finalPin),
         isPublished: Boolean(isPublished),
         publishedAt: isPublished ? new Date().toISOString() : null,
         viewCount: 0,
@@ -171,7 +185,11 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      gallery: savedGallery,
+      gallery: {
+        ...savedGallery,
+        pin: rawPin,
+        pinHash: undefined,
+      },
       curatedCount: selectedPhotos?.length || 0,
     });
   } catch (error: unknown) {

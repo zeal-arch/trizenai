@@ -49,7 +49,7 @@ const DEFAULT_AVATARS = [
 
 export default function TeamPage() {
   const router = useRouter();
-  const { isTeamMember, loading: authLoading } = useCurrentUser();
+  const { user, isTeamMember, loading: authLoading } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [team, setTeam] = useState<TeamUser[]>([]);
 
@@ -168,8 +168,15 @@ export default function TeamPage() {
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
 
-    if (userToDelete.id === "7f55215b-06c9-44f3-9667-69f863393593") {
-      toast.error("Cannot delete the primary Lead Administrator.");
+    if (userToDelete.id === user?.id || (user?.authId && userToDelete.id === user.authId)) {
+      toast.error("You cannot delete your own account.");
+      setUserToDelete(null);
+      return;
+    }
+
+    const adminCount = team.filter((m) => m.role === "ADMIN").length;
+    if (userToDelete.role === "ADMIN" && adminCount <= 1) {
+      toast.error("Cannot delete the only remaining Administrator.");
       setUserToDelete(null);
       return;
     }
@@ -198,6 +205,8 @@ export default function TeamPage() {
     u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const adminCount = team.filter((m) => m.role === "ADMIN").length;
 
   return (
     <div className="space-y-6">
@@ -257,13 +266,16 @@ export default function TeamPage() {
             </thead>
             <tbody className="divide-y divide-[#EBE8E3] dark:divide-white/15">
               {filteredTeam.map((member) => {
-                const isLeadAdmin = member.id === "7f55215b-06c9-44f3-9667-69f863393593";
+                const isSelf = member.id === user?.id || (!!user?.authId && member.id === user.authId);
+                const isSoleAdmin = member.role === "ADMIN" && adminCount <= 1;
+                const isProtected = isSelf || isSoleAdmin;
+
                 return (
                   <tr key={member.id} className="hover:bg-gray-50/50 dark:hover:bg-dark-2/40 transition">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <Image
-                          src={member.avatarUrl}
+                          src={member.avatarUrl || "/image/user/user-01.png"}
                           alt={member.fullName}
                           width={36}
                           height={36}
@@ -301,7 +313,7 @@ export default function TeamPage() {
                       {member.joinedDate}
                     </td>
                     <td className="px-5 py-4 text-right">
-                      {!isLeadAdmin ? (
+                      {!isProtected ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -312,7 +324,9 @@ export default function TeamPage() {
                           <Trash2 className="size-4" />
                         </Button>
                       ) : (
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400 italic pr-2">Owner</span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 italic pr-2">
+                          {isSelf ? "You" : "Lead Admin"}
+                        </span>
                       )}
                     </td>
                   </tr>

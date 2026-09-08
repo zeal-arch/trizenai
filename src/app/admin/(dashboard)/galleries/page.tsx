@@ -25,7 +25,7 @@ interface GalleryItem {
   title: string;
   eventTitle: string;
   slug: string;
-  pin: string;
+  pin?: string;
   photoCount: number;
   viewCount: number;
   isPublished: boolean;
@@ -62,7 +62,7 @@ export default function GalleriesPage() {
                 title: g.title,
                 eventTitle: g.eventTitle || "Event Gallery",
                 slug: g.slug,
-                pin: g.pin || "123456",
+                pin: g.pin,
                 photoCount: g.photoCount || 0,
                 viewCount: g.viewCount || 0,
                 isPublished: g.isPublished,
@@ -90,7 +90,11 @@ export default function GalleriesPage() {
     setRevealedPins((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const copyPin = (pin: string, id: string) => {
+  const copyPin = (pin: string | undefined, id: string) => {
+    if (!pin) {
+      toast.error("This gallery PIN is unavailable. Rotate the PIN from the event page.");
+      return;
+    }
     navigator.clipboard.writeText(pin);
     setCopiedPinId(id);
     toast.success("PIN copied to clipboard!");
@@ -99,7 +103,7 @@ export default function GalleriesPage() {
 
   const copyShareLink = (gallery: GalleryItem) => {
     const url = `${window.location.origin}/gallery/${gallery.slug}`;
-    const text = `📸 ${gallery.title}\n🔗 Link: ${url}\n🔑 PIN: ${gallery.pin}`;
+    const text = `📸 ${gallery.title}\n🔗 Link: ${url}\n🔑 PIN: ${gallery.pin || "Rotate PIN from the event page"}`;
     navigator.clipboard.writeText(text);
     setCopiedId(gallery.id);
     toast.success("Gallery invite text copied to clipboard!");
@@ -122,8 +126,29 @@ export default function GalleriesPage() {
         </div>
       </div>
 
+      {/* Empty state */}
+      {galleries.length === 0 && (
+        <div className="flex h-72 flex-col items-center justify-center rounded-2xl border border-dashed border-[#EBE8E3] bg-white dark:border-white/15 dark:bg-gray-dark text-center p-6">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-3">
+            <Lock className="size-6" />
+          </div>
+          <h4 className="text-sm font-bold text-gray-900 dark:text-white">
+            No published customer galleries yet
+          </h4>
+          <p className="text-xs text-gray-500 max-w-sm mt-1">
+            Navigate to an Event, curate your selected photos, and click &quot;Publish Gallery&quot; to generate your first PIN-protected client collection.
+          </p>
+          <Link href="/admin/events" className="mt-4">
+            <Button size="sm" className="rounded-full bg-primary hover:bg-primary/90 text-white text-xs px-4">
+              Go to Events
+            </Button>
+          </Link>
+        </div>
+      )}
+
       {/* Galleries List */}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {galleries.length > 0 && (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {galleries.map((gallery) => {
           const isPinRevealed = !!revealedPins[gallery.id];
 
@@ -159,7 +184,7 @@ export default function GalleriesPage() {
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono text-sm font-bold tracking-widest text-primary">
-                        {isPinRevealed ? gallery.pin : "••••••"}
+                        {isPinRevealed ? gallery.pin || "Unavailable" : "••••••"}
                       </span>
                       <button
                         type="button"
@@ -171,7 +196,7 @@ export default function GalleriesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => copyPin(gallery.pin, gallery.id)}
+                      onClick={() => copyPin(gallery.pin, gallery.id)}
                         className="p-1 text-dark-5 hover:text-primary transition"
                         title="Copy PIN"
                       >
@@ -236,7 +261,8 @@ export default function GalleriesPage() {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

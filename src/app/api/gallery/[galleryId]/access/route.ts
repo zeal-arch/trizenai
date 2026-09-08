@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import crypto from "crypto";
+import { verifyGalleryPin } from "@/lib/security/gallery-pin";
 
 export const dynamic = "force-dynamic";
-
-function hashPin(pin: string): string {
-  return crypto.createHash("sha256").update(pin.trim()).digest("hex");
-}
 
 // POST /api/gallery/[galleryId]/access - Customer PIN verification & gallery access
 export async function POST(
@@ -15,7 +11,13 @@ export async function POST(
 ) {
   try {
     const { galleryId } = await params;
-    const { pin } = await req.json();
+    let body: { pin?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "A valid JSON body is required." }, { status: 400 });
+    }
+    const pin = body?.pin;
 
     if (!pin) {
       return NextResponse.json({ error: "Access PIN is required" }, { status: 400 });
@@ -53,8 +55,7 @@ export async function POST(
     }
 
     // 2. Verify PIN
-    const enteredPinHash = hashPin(pin);
-    if (gallery.pinHash !== enteredPinHash) {
+    if (!verifyGalleryPin(pin, gallery.pinHash)) {
       return NextResponse.json(
         { error: "Invalid PIN. Please verify with the event host." },
         { status: 401 }

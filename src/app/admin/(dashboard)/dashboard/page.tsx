@@ -339,7 +339,14 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EBE8E3] dark:divide-white/15">
-                {recentEvents.map((event) => (
+                {recentEvents.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-8 text-center text-gray-500 dark:text-gray-400">
+                      No events created yet. Click &quot;New Event&quot; to get started.
+                    </td>
+                  </tr>
+                ) : (
+                  recentEvents.map((event) => (
                   <tr key={event.id} className="hover:bg-gray-50/50 dark:hover:bg-white/[0.03] transition">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -408,7 +415,7 @@ export default function AdminDashboardPage() {
                       </Link>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>

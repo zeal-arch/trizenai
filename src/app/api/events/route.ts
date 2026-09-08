@@ -10,6 +10,10 @@ export async function GET() {
     const supabase = createAdminClient();
     const currentUser = await getCurrentUserOrNull();
 
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized: Authentication required." }, { status: 401 });
+    }
+
     let assignedEventIds: string[] | null = null;
 
     // If the authenticated user is a TEAM_MEMBER, filter to only assigned events
@@ -104,7 +108,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       events: formattedEvents,
-      role: currentUser?.role || "ADMIN",
+      role: currentUser.role,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to fetch events";
@@ -158,7 +162,7 @@ export async function POST(req: NextRequest) {
         id: crypto.randomUUID(),
         eventId: eventId,
         userId: creatorId,
-        createdAt: new Date().toISOString(),
+        assignedAt: new Date().toISOString(),
       },
     ]);
 
@@ -171,4 +175,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-
