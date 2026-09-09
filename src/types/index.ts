@@ -1,4 +1,5 @@
 export type UserRole = 'ADMIN' | 'TEAM_MEMBER';
+export type EventRole = 'LEAD' | 'TEAM_MEMBER';
 
 export interface PhotoItem {
   id: string;

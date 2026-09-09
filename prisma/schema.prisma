@@ -13,6 +13,11 @@ enum Role {
   TEAM_MEMBER
 }
 
+enum EventRole {
+  LEAD
+  TEAM_MEMBER
+}
+
 model User {
   id           String        @id @default(uuid())
   email        String        @unique
@@ -52,6 +57,7 @@ model EventMember {
   id         String   @id @default(uuid())
   eventId    String
   userId     String
+  role       EventRole @default(TEAM_MEMBER)
   assignedAt DateTime @default(now())
 
   event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)

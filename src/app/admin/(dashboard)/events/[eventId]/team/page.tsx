@@ -20,13 +20,15 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Badge } from "@/components/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import type { EventRole } from "@/types";
 import { toast } from "sonner";
 
 interface TeamMember {
   id: string;
   fullName: string;
   email: string;
-  role: "ADMIN" | "TEAM_MEMBER";
+  globalRole: "ADMIN" | "TEAM_MEMBER";
+  eventRole: EventRole | null;
   avatarUrl?: string;
   isAssigned: boolean;
   uploadedCount: number;
@@ -39,22 +41,20 @@ export default function EventTeamPage({
 }) {
   const { eventId } = use(params);
   const router = useRouter();
-  const { isTeamMember, loading: authLoading } = useCurrentUser();
+  const { loading: authLoading } = useCurrentUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!authLoading && isTeamMember) {
-      toast.error("Access Restricted: Team management is reserved for Team Admins.");
-      router.replace("/admin/events");
-    }
-  }, [authLoading, isTeamMember, router]);
 
   const loadEventTeam = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`/api/events/${eventId}/team`);
+      if (res.status === 403) {
+        toast.error("Only the lead for this project can manage its team.");
+        router.replace("/admin/events");
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.members) {
@@ -66,11 +66,13 @@ export default function EventTeamPage({
     } finally {
       setLoading(false);
     }
-  }, [eventId]);
+  }, [eventId, router]);
 
   useEffect(() => {
-    loadEventTeam();
-  }, [loadEventTeam]);
+    if (!authLoading) {
+      loadEventTeam();
+    }
+  }, [authLoading, loadEventTeam]);
 
 
   const toggleAssignment = async (memberId: string) => {
@@ -84,20 +86,61 @@ export default function EventTeamPage({
 
     try {
       if (nextState) {
-        await fetch(`/api/events/${eventId}/team`, {
+        const res = await fetch(`/api/events/${eventId}/team`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: memberId }),
+          body: JSON.stringify({ userId: memberId, role: target.eventRole || "TEAM_MEMBER" }),
         });
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || "Failed to assign team member.");
+        }
         toast.success(`Assigned ${target.fullName} to this event.`);
       } else {
-        await fetch(`/api/events/${eventId}/team?userId=${memberId}`, {
+        const res = await fetch(`/api/events/${eventId}/team?userId=${memberId}`, {
           method: "DELETE",
         });
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || "Failed to remove team member.");
+        }
         toast.info(`Removed ${target.fullName} from this event.`);
       }
-    } catch {
-      // update happened locally
+    } catch (error) {
+      setTeamMembers((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, isAssigned: target.isAssigned } : m))
+      );
+      toast.error(error instanceof Error ? error.message : "Failed to update event team.");
+    }
+  };
+
+  const changeEventRole = async (memberId: string, eventRole: EventRole) => {
+    const target = teamMembers.find((m) => m.id === memberId);
+    if (!target) return;
+
+    const previousRole = target.eventRole;
+    setTeamMembers((prev) =>
+      prev.map((m) => (m.id === memberId ? { ...m, eventRole } : m))
+    );
+
+    if (!target.isAssigned) return;
+
+    try {
+      const res = await fetch(`/api/events/${eventId}/team`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: memberId, role: eventRole }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update project role.");
+      }
+      toast.success(`Updated ${target.fullName}'s role for this project.`);
+    } catch (error) {
+      setTeamMembers((prev) =>
+        prev.map((m) => (m.id === memberId ? { ...m, eventRole: previousRole } : m))
+      );
+      toast.error(error instanceof Error ? error.message : "Failed to update project role.");
     }
   };
 
@@ -107,6 +150,14 @@ export default function EventTeamPage({
   );
 
   const assignedCount = teamMembers.filter((m) => m.isAssigned).length;
+
+  if (authLoading || loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -169,7 +220,7 @@ export default function EventTeamPage({
             <thead className="border-b border-[#EBE8E3] bg-gray-50/50 text-[11px] font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-200 dark:border-white/15 dark:bg-dark-2">
               <tr>
                 <th className="px-6 py-3.5">Team Member</th>
-                <th className="px-6 py-3.5">Role</th>
+                <th className="px-6 py-3.5">Project Role</th>
                 <th className="px-6 py-3.5">Event Photos Uploaded</th>
                 <th className="px-6 py-3.5">Assignment Status</th>
                 <th className="px-6 py-3.5 text-right">Action</th>
@@ -199,15 +250,28 @@ export default function EventTeamPage({
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    {member.role === "ADMIN" ? (
-                      <Badge variant="default" className="gap-1 bg-primary text-white">
-                        <Shield className="size-3" /> Lead Admin
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="gap-1">
-                        <UserCheck className="size-3" /> Photographer
-                      </Badge>
-                    )}
+                    <div className="flex flex-col items-start gap-1.5">
+                      {member.eventRole === "LEAD" ? (
+                        <Badge variant="default" className="gap-1 bg-primary text-white">
+                          <Shield className="size-3" /> Project Lead
+                        </Badge>
+                      ) : member.eventRole === "TEAM_MEMBER" ? (
+                        <Badge variant="secondary" className="gap-1">
+                          <UserCheck className="size-3" /> Team Member
+                        </Badge>
+                      ) : (
+                        <span className="text-[11px] text-dark-5">Not assigned</span>
+                      )}
+                      <select
+                        aria-label={`Project role for ${member.fullName}`}
+                        value={member.eventRole || "TEAM_MEMBER"}
+                        onChange={(event) => changeEventRole(member.id, event.target.value as EventRole)}
+                        className="h-7 rounded-lg border border-[#EBE8E3] bg-white px-2 text-[11px] dark:border-white/15 dark:bg-dark-2"
+                      >
+                        <option value="TEAM_MEMBER">Team Member</option>
+                        <option value="LEAD">Project Lead</option>
+                      </select>
+                    </div>
                   </td>
                   <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
                     {member.uploadedCount} photos

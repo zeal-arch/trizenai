@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireEventAccess, requireRole } from "@/lib/permissions/require-role";
+import { requireEventAccess, requireEventRole } from "@/lib/permissions/require-role";
 import crypto from "crypto";
 import {
   decryptGalleryPin,
@@ -24,7 +24,7 @@ export async function GET(
       return accessCheck;
     }
 
-    const isAdmin = accessCheck.role === "ADMIN";
+    const isLead = accessCheck.eventRole === "LEAD";
 
     const { data: gallery, error } = await supabase
       .from("galleries")
@@ -47,7 +47,7 @@ export async function GET(
     // Only expose PIN to Admin
     const safeGallery = {
       ...gallery,
-      pin: isAdmin ? decryptGalleryPin(gallery.pin) : undefined,
+      pin: isLead ? decryptGalleryPin(gallery.pin) : undefined,
       pinHash: undefined,
       photoCount: count || 0,
     };
@@ -68,12 +68,12 @@ export async function POST(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const authResult = await requireRole(["ADMIN"], "publish customer galleries");
+    const { eventId } = await params;
+    const authResult = await requireEventRole(eventId, ["LEAD"], "publish customer galleries");
     if (authResult instanceof NextResponse) {
       return authResult;
     }
 
-    const { eventId } = await params;
     const supabase = createAdminClient();
     const body = await req.json();
 

@@ -16,12 +16,12 @@ export async function GET() {
 
     let assignedEventIds: string[] | null = null;
 
-    // If the authenticated user is a TEAM_MEMBER, filter to only assigned events
+    // Non-platform-admin users can only see projects to which they belong.
     if (currentUser && currentUser.role === "TEAM_MEMBER") {
       const userIds = [currentUser.user.id, currentUser.user.authId].filter(Boolean) as string[];
       const { data: memberRecords, error: memberErr } = await supabase
         .from("event_members")
-        .select("eventId")
+        .select("eventId, role")
         .in("userId", userIds);
 
       if (memberErr) {
@@ -77,7 +77,7 @@ export async function GET() {
     // 4. Fetch event member counts
     const { data: eventMembers } = await supabase
       .from("event_members")
-      .select("eventId");
+      .select("eventId, userId, role");
 
     const currentAllowedIds = currentUser
       ? new Set([currentUser.user.id, currentUser.user.authId].filter(Boolean))
@@ -92,6 +92,9 @@ export async function GET() {
         ? eventPhotos.filter((p) => p.uploadedBy && currentAllowedIds.has(p.uploadedBy)).length
         : 0;
       const teamCount = (eventMembers || []).filter((m) => m.eventId === event.id).length;
+      const membership = (eventMembers || []).find(
+        (m) => m.eventId === event.id && currentAllowedIds.has(m.userId)
+      );
       const gallery = (galleries || []).find((g) => g.eventId === event.id);
 
       return {
@@ -100,6 +103,7 @@ export async function GET() {
         selectedCount: selectedPhotos,
         myPhotoCount: myPhotos,
         teamCount: teamCount || 1,
+        eventRole: membership?.role || (currentUser.role === "ADMIN" ? "LEAD" : null),
         gallery: gallery || null,
         isPublished: gallery?.isPublished || false,
       };
@@ -162,6 +166,7 @@ export async function POST(req: NextRequest) {
         id: crypto.randomUUID(),
         eventId: eventId,
         userId: creatorId,
+        role: "LEAD",
         assignedAt: new Date().toISOString(),
       },
     ]);

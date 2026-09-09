@@ -77,19 +77,81 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Full Name and Email are required." }, { status: 400 });
     }
 
-    // Generate a secure temporary password
+    const cleanEmail = email.trim().toLowerCase();
+    const requestedRole = role === "ADMIN" ? "ADMIN" : "TEAM_MEMBER";
+
+    // Adding a team member must also work for an account that already exists.
+    // The previous flow tried to create the Supabase Auth user first, which
+    // caused existing accounts to fail before they could be reused.
+    const { data: existingUser, error: existingUserError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", cleanEmail)
+      .maybeSingle();
+
+    if (existingUserError) throw existingUserError;
+
+    if (existingUser) {
+      // Never downgrade an existing administrator just because the form's
+      // default role is TEAM_MEMBER. Selecting ADMIN may promote a member.
+      const effectiveRole = existingUser.role === "ADMIN" || requestedRole === "ADMIN"
+        ? "ADMIN"
+        : "TEAM_MEMBER";
+
+      const { data: updatedUser, error: updateError } = await supabase
+        .from("users")
+        .update({
+          fullName: fullName.trim(),
+          role: effectiveRole,
+          avatarUrl: avatarUrl || existingUser.avatarUrl,
+          updatedAt: new Date().toISOString(),
+        })
+        .eq("id", existingUser.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      const [{ count: assignedEventsCount }, { count: uploadedPhotosCount }] = await Promise.all([
+        supabase
+          .from("event_members")
+          .select("id", { count: "exact", head: true })
+          .eq("userId", existingUser.id),
+        supabase
+          .from("photos")
+          .select("id", { count: "exact", head: true })
+          .eq("uploadedBy", existingUser.id),
+      ]);
+
+      const roleLabel = effectiveRole === "ADMIN" ? "Administrator" : "Team Member";
+      return NextResponse.json({
+        success: true,
+        existing: true,
+        message: `${cleanEmail} is already on the team as ${roleLabel}. You can assign this account to events from the Event Team page.`,
+        user: {
+          ...updatedUser,
+          assignedEventsCount: assignedEventsCount || 0,
+          uploadedPhotosCount: uploadedPhotosCount || 0,
+          joinedDate: updatedUser.createdAt
+            ? new Date(updatedUser.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+            : "Recent",
+        },
+      });
+    }
+
+    // Generate a secure temporary password for a brand-new account.
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
     const rand = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
     const tempPassword = `Trizen${rand}@${new Date().getFullYear()}`;
 
     // 1. Create a real Supabase Auth account so the user can login
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       password: tempPassword,
       email_confirm: true, // auto-confirm so they can login immediately without an email link
       user_metadata: {
         full_name: fullName.trim(),
-        role: role === "ADMIN" ? "ADMIN" : "TEAM_MEMBER",
+        role: requestedRole,
         avatar_url: avatarUrl || "/image/user/user-01.png",
       },
     });
@@ -97,7 +159,7 @@ export async function POST(req: NextRequest) {
     if (authError) {
       if (authError.message?.toLowerCase().includes("already registered") || authError.status === 422) {
         return NextResponse.json(
-          { error: `A user with email ${email.trim().toLowerCase()} already exists. Ask them to use their existing password to login.` },
+          { error: `A user with email ${cleanEmail} already exists. Refresh the team list and assign the existing account to an event instead.` },
           { status: 409 }
         );
       }
@@ -108,8 +170,8 @@ export async function POST(req: NextRequest) {
     const newUser = {
       id: userId,
       fullName: fullName.trim(),
-      email: email.trim().toLowerCase(),
-      role: role === "ADMIN" ? "ADMIN" : "TEAM_MEMBER",
+      email: cleanEmail,
+      role: requestedRole,
       avatarUrl: avatarUrl || "/image/user/user-01.png",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireRole, requireEventAccess } from "@/lib/permissions/require-role";
+import { requireEventAccess, requireEventRole } from "@/lib/permissions/require-role";
 import { decryptGalleryPin } from "@/lib/security/gallery-pin";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export async function GET(
       .eq("eventId", eventId)
       .order("createdAt", { ascending: false });
 
-    if (accessCheck.role === "TEAM_MEMBER") {
+    if (accessCheck.eventRole === "TEAM_MEMBER") {
       const userIds = [accessCheck.user.id, accessCheck.user.authId].filter(Boolean) as string[];
       photosQuery = photosQuery.in("uploadedBy", userIds);
     }
@@ -50,14 +50,14 @@ export async function GET(
 
     const { data: members } = await supabase
       .from("event_members")
-      .select("userId, assignedAt")
+      .select("userId, role, assignedAt")
       .eq("eventId", eventId);
 
-    const isAdmin = accessCheck.role === "ADMIN";
+    const isLead = accessCheck.eventRole === "LEAD";
     const safeGallery = gallery
       ? {
           ...gallery,
-          pin: isAdmin ? decryptGalleryPin(gallery.pin) : undefined,
+          pin: isLead ? decryptGalleryPin(gallery.pin) : undefined,
           pinHash: undefined,
         }
       : null;
@@ -66,6 +66,7 @@ export async function GET(
       success: true,
       event: {
         ...event,
+        eventRole: accessCheck.eventRole,
         photos: photos || [],
         photoCount: (photos || []).length,
         selectedCount: (photos || []).filter((p) => p.isSelected).length,
@@ -85,12 +86,12 @@ export async function PATCH(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const authResult = await requireRole(["ADMIN"], "update event details");
+    const { eventId } = await params;
+    const authResult = await requireEventRole(eventId, ["LEAD"], "update event details");
     if (authResult instanceof NextResponse) {
       return authResult;
     }
 
-    const { eventId } = await params;
     const supabase = createAdminClient();
     const body = await req.json();
 
@@ -131,12 +132,12 @@ export async function DELETE(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const authResult = await requireRole(["ADMIN"], "delete events");
+    const { eventId } = await params;
+    const authResult = await requireEventRole(eventId, ["LEAD"], "delete events");
     if (authResult instanceof NextResponse) {
       return authResult;
     }
 
-    const { eventId } = await params;
     const supabase = createAdminClient();
 
     // 1. Delete gallery photos

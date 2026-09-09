@@ -18,6 +18,7 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Badge } from "@/components/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import type { EventRole } from "@/types";
 
 interface EventItem {
   id: string;
@@ -30,6 +31,7 @@ interface EventItem {
   selectedCount: number;
   myPhotoCount?: number;
   teamCount: number;
+  eventRole: EventRole | null;
   galleryPublished: boolean;
 }
 
@@ -59,6 +61,7 @@ export default function EventsPage() {
                 selectedCount?: number;
                 myPhotoCount?: number;
                 teamCount?: number;
+                eventRole?: EventRole | null;
                 isPublished?: boolean;
               }) => ({
                 id: e.id,
@@ -71,6 +74,7 @@ export default function EventsPage() {
                 selectedCount: e.selectedCount || 0,
                 myPhotoCount: e.myPhotoCount || 0,
                 teamCount: e.teamCount || 1,
+                eventRole: e.eventRole || null,
                 galleryPublished: e.isPublished || false,
               }))
             );
@@ -163,7 +167,11 @@ export default function EventsPage() {
       {/* Events Grid */}
       {!loading && !authLoading && filteredEvents.length > 0 && (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredEvents.map((event) => (
+          {filteredEvents.map((event) => {
+            const isEventLead = event.eventRole === "LEAD";
+            const isEventMember = event.eventRole === "TEAM_MEMBER";
+
+            return (
             <div
               key={event.id}
               className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#EBE8E3] bg-white shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/15 dark:bg-gray-dark"
@@ -232,10 +240,10 @@ export default function EventsPage() {
                   </div>
                   <div>
                     <p className="text-[10px] uppercase font-semibold text-dark-5">
-                      {isTeamMember ? "My Uploads" : "Selected"}
+                      {isEventMember ? "My Uploads" : "Selected"}
                     </p>
                     <p className="text-sm font-bold text-primary mt-0.5">
-                      {isTeamMember ? event.myPhotoCount : event.selectedCount}
+                      {isEventMember ? event.myPhotoCount : event.selectedCount}
                     </p>
                   </div>
                   <div>
@@ -251,11 +259,11 @@ export default function EventsPage() {
                   <Link href={`/admin/events/${event.id}/photos`} className="flex-1">
                     <Button className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl text-xs h-9 flex items-center justify-center gap-1.5 shadow-xs">
                       <ImageIcon className="size-3.5" />
-                      {isTeamMember ? "Upload & View Photos" : "Manage Photos"}
+                      {isEventMember ? "Upload & View Photos" : "Manage Photos"}
                     </Button>
                   </Link>
 
-                  {isAdmin && (
+                  {isEventLead && (
                     <Link href={`/admin/events/${event.id}/team`} title="Assign Team Members">
                       <Button variant="outline" size="icon" className="size-9 rounded-xl border-[#EBE8E3] dark:border-white/15 hover:border-primary hover:text-primary">
                         <Users className="size-4" />
@@ -265,10 +273,10 @@ export default function EventsPage() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
-

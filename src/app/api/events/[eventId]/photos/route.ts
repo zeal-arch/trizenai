@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireRole, requireEventAccess } from "@/lib/permissions/require-role";
+import { requireEventAccess, requireEventRole } from "@/lib/permissions/require-role";
 import { deleteFromCloudinary } from "@/lib/cloudinary/server";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export async function GET(
       .eq("eventId", eventId)
       .order("createdAt", { ascending: false });
 
-    if (accessCheck.role === "TEAM_MEMBER") {
+    if (accessCheck.eventRole === "TEAM_MEMBER") {
       const userIds = [accessCheck.user.id, accessCheck.user.authId].filter(Boolean) as string[];
       query = query.in("uploadedBy", userIds);
     }
@@ -126,7 +126,7 @@ export async function POST(
         fileSize: Number(p.fileSize ?? p.bytes),
         width: p.width ? Number(p.width) : null,
         height: p.height ? Number(p.height) : null,
-        isSelected: currentUser.role === "ADMIN" && p.isSelected === true,
+        isSelected: currentUser.eventRole === "LEAD" && p.isSelected === true,
         tags: Array.isArray(p.tags) ? p.tags : [],
         createdAt: new Date().toISOString(),
       };
@@ -156,12 +156,12 @@ export async function PATCH(
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   try {
-    const authResult = await requireRole(["ADMIN"], "curate photos for customer galleries");
+    const { eventId } = await params;
+    const authResult = await requireEventRole(eventId, ["LEAD"], "curate photos for customer galleries");
     if (authResult instanceof NextResponse) {
       return authResult;
     }
 
-    const { eventId } = await params;
     const supabase = createAdminClient();
     const body = await req.json();
 
@@ -233,7 +233,7 @@ export async function DELETE(
 
 
     // If caller is TEAM_MEMBER, verify all requested photos were uploaded by this member
-    if (currentUser.role === "TEAM_MEMBER") {
+    if (currentUser.eventRole === "TEAM_MEMBER") {
       const { data: targetPhotos, error: fetchErr } = await supabase
         .from("photos")
         .select("id, uploadedBy")

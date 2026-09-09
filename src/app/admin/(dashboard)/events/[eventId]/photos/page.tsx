@@ -28,7 +28,7 @@ import { PhotoGrid } from "@/app/admin/features/photos/photo-grid";
 import { BulkUploadModal } from "@/app/admin/features/photos/bulk-upload-modal";
 import { GalleryPublishModal } from "@/app/admin/features/galleries/gallery-publish-modal";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import type { PhotoItem } from "@/types";
+import type { EventRole, PhotoItem } from "@/types";
 import { toast } from "sonner";
 
 export default function EventPhotosPage({
@@ -38,7 +38,7 @@ export default function EventPhotosPage({
 }) {
   const { eventId } = use(params);
   const router = useRouter();
-  const { user, isAdmin, isTeamMember } = useCurrentUser();
+  const { user } = useCurrentUser();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isPublishOpen, setIsPublishOpen] = useState(false);
   const [previewPhotoIndex, setPreviewPhotoIndex] = useState<number | null>(null);
@@ -49,6 +49,7 @@ export default function EventPhotosPage({
   const [galleryPin, setGalleryPin] = useState<string | null>(null);
   const [galleryTitle, setGalleryTitle] = useState<string | null>(null);
   const [galleryId, setGalleryId] = useState<string | null>(null);
+  const [eventRole, setEventRole] = useState<EventRole | null>(null);
   const [showPin, setShowPin] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPin, setCopiedPin] = useState(false);
@@ -58,6 +59,8 @@ export default function EventPhotosPage({
   // Photo list state
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const isEventLead = eventRole === "LEAD";
+  const isEventMember = eventRole === "TEAM_MEMBER";
 
   const fetchEventData = useCallback(async () => {
     try {
@@ -76,6 +79,7 @@ export default function EventPhotosPage({
       }
       if (eventRes.ok) {
         const eventData = await eventRes.json();
+        setEventRole(eventData.event?.eventRole || null);
         if (eventData.event?.title) {
           setEventTitle(eventData.event.title);
         }
@@ -121,7 +125,7 @@ export default function EventPhotosPage({
   }, [fetchEventData]);
 
   const toggleSelectPhoto = async (photo: PhotoItem) => {
-    if (!isAdmin) {
+    if (!isEventLead) {
       toast.error("Permission Denied: Only Team Admins can curate gallery photos.");
       return;
     }
@@ -176,7 +180,7 @@ export default function EventPhotosPage({
 
   const handleDeletePhoto = async (photo: PhotoItem) => {
     // Team Members can only delete photos they uploaded themselves
-    if (!isAdmin && !isPhotoOwner(photo)) {
+    if (!isEventLead && !isPhotoOwner(photo)) {
       toast.error("Permission Denied: Team Members can only delete photos they uploaded themselves.");
       return;
     }
@@ -243,7 +247,7 @@ export default function EventPhotosPage({
 
   // Filter based on tab and curation filter
   let displayedPhotos = viewTab === "my_uploads" ? myPhotos : photos;
-  if (filterSelectedOnly && isAdmin) {
+  if (filterSelectedOnly && isEventLead) {
     displayedPhotos = displayedPhotos.filter((p) => selectedIds.has(p.id));
   }
 
@@ -272,7 +276,7 @@ export default function EventPhotosPage({
 
   return (
     <div className="space-y-6">
-      <Breadcrumb pageName={isTeamMember ? "Event Photos & Uploads" : "Photo Curation Workspace"} />
+      <Breadcrumb pageName={isEventMember ? "Event Photos & Uploads" : "Photo Curation Workspace"} />
 
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -288,11 +292,11 @@ export default function EventPhotosPage({
           </Link>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
-              {isTeamMember ? "Upload & Review Photos" : "Photo Curation & Uploads"}
+              {isEventMember ? "Upload & Review Photos" : "Photo Curation & Uploads"}
             </h1>
             <p className="text-xs text-dark-5 dark:text-dark-6">
               Event: <strong className="text-gray-900 dark:text-white">{eventTitle}</strong> ·{" "}
-              {isTeamMember
+              {isEventMember
                 ? "Upload your photography for this event and review your submissions."
                 : "Review uploads, select approved photos, and publish customer galleries."}
             </p>
@@ -309,7 +313,7 @@ export default function EventPhotosPage({
             Upload Photos
           </Button>
 
-          {isAdmin && (
+          {isEventLead && (
             <Button
               onClick={() => setIsPublishOpen(true)}
               className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-full px-5 py-2 text-xs shadow-md shadow-primary/20 flex items-center gap-2"
@@ -322,7 +326,7 @@ export default function EventPhotosPage({
       </div>
 
       {/* Live Gallery & PIN Access Banner (Admin Only) */}
-      {isAdmin && gallerySlug && (
+      {isEventLead && gallerySlug && (
         <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 via-primary/10 to-purple-500/5 p-4 sm:p-5 shadow-xs dark:border-primary/30 dark:from-primary/10 dark:via-primary/15 dark:to-purple-500/10">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1.5">
@@ -457,7 +461,7 @@ export default function EventPhotosPage({
 
         {/* Right side stats & curation filter (Admin Only) */}
         <div className="flex items-center gap-3">
-          {isAdmin && (
+          {isEventLead && (
             <>
               <div className="hidden sm:flex items-center gap-2 text-xs text-emerald-600 font-medium">
                 <span>Curated for Gallery:</span>
@@ -487,9 +491,9 @@ export default function EventPhotosPage({
         photos={displayedPhotos}
         selectedIds={selectedIds}
         isLoading={loadingPhotos}
-        canSelect={isAdmin}
-        canDelete={(photo) => isAdmin || isPhotoOwner(photo)}
-        onToggleSelect={isAdmin ? toggleSelectPhoto : undefined}
+        canSelect={isEventLead}
+        canDelete={(photo) => isEventLead || isPhotoOwner(photo)}
+        onToggleSelect={isEventLead ? toggleSelectPhoto : undefined}
         onPreview={(photo) => {
           const idx = displayedPhotos.findIndex((p) => p.id === photo.id);
           if (idx !== -1) setPreviewPhotoIndex(idx);
@@ -579,7 +583,7 @@ export default function EventPhotosPage({
         }}
       />
 
-      {isAdmin && (
+      {isEventLead && (
         <GalleryPublishModal
           open={isPublishOpen}
           onOpenChange={setIsPublishOpen}

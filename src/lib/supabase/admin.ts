@@ -22,6 +22,24 @@ export function createAdminClient() {
         )
     }
 
+    // Supabase returns "User not allowed" when an anon key is accidentally
+    // configured here. Fail with a useful server-side configuration error.
+    const jwtPayload = serviceRoleKey.split('.')[1]
+    if (jwtPayload) {
+        try {
+            const normalizedPayload = jwtPayload.replace(/-/g, '+').replace(/_/g, '/')
+            const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=')
+            const payload = JSON.parse(Buffer.from(paddedPayload, 'base64').toString('utf8')) as { role?: string }
+            if (payload.role === 'anon') {
+                throw new Error('SUPABASE_SERVICE_ROLE_KEY is configured with an anon key. Use the Supabase service_role key on the server.')
+            }
+        } catch (error) {
+            if (error instanceof Error && error.message.includes('SUPABASE_SERVICE_ROLE_KEY')) {
+                throw error
+            }
+        }
+    }
+
     return createClient(url, serviceRoleKey, {
         auth: {
             autoRefreshToken: false,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { UserRole } from '@/types';
+import type { EventRole, UserRole } from '@/types';
 
 export interface RoleGuardSuccess {
   user: {
@@ -11,6 +11,7 @@ export interface RoleGuardSuccess {
     fullName?: string;
   };
   role: UserRole;
+  eventRole?: EventRole;
 }
 
 /**
@@ -100,24 +101,62 @@ export async function requireEventAccess(
     return NextResponse.json({ error: 'Unauthorized: Authentication required.' }, { status: 401 });
   }
 
-  if (current.role === 'ADMIN') {
-    return current;
-  }
-
-  // Team Member check: Verify assignment in event_members
+  // Event membership is authoritative for project access. A platform Admin
+  // remains a backwards-compatible lead only when no project membership row
+  // exists yet (for example, before an older event is migrated).
   const supabase = createAdminClient();
   const userIds = [current.user.id, current.user.authId].filter(Boolean) as string[];
   const { data: assignment, error } = await supabase
     .from('event_members')
-    .select('id')
+    .select('id, role')
     .eq('eventId', eventId)
     .in('userId', userIds)
     .limit(1)
     .maybeSingle();
 
-  if (error || !assignment) {
+  if (error) {
+    return NextResponse.json(
+      { error: 'Event membership could not be checked. Apply the project-role database migration first.' },
+      { status: 500 }
+    );
+  }
+
+  if (!assignment && current.role === 'ADMIN') {
+    return { ...current, eventRole: 'LEAD' };
+  }
+
+  if (!assignment) {
     return NextResponse.json(
       { error: `Forbidden: You are not assigned to this event and cannot ${action}.` },
+      { status: 403 }
+    );
+  }
+
+  const eventRole = assignment.role as EventRole;
+  return {
+    ...current,
+    eventRole,
+    // Keep the existing response shape compatible with callers while making
+    // the role event-scoped for all event APIs.
+    role: eventRole === 'LEAD' ? 'ADMIN' : 'TEAM_MEMBER',
+  };
+}
+
+/** Requires a specific role inside one event/project. */
+export async function requireEventRole(
+  eventId: string,
+  allowedRoles: EventRole[],
+  action = 'perform this action'
+): Promise<RoleGuardSuccess | NextResponse> {
+  const current = await requireEventAccess(eventId, action);
+
+  if (current instanceof NextResponse) {
+    return current;
+  }
+
+  if (!current.eventRole || !allowedRoles.includes(current.eventRole)) {
+    return NextResponse.json(
+      { error: `Forbidden: Your role in this project is not authorized to ${action}.` },
       { status: 403 }
     );
   }

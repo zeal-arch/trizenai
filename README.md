@@ -104,7 +104,7 @@ graph TD
 
 - users: id, email, fullName, role (ADMIN|TEAM_MEMBER), avatarUrl
 - events: id, title, description, date, location, coverImage, createdBy
-- event_members: eventId, userId (junction table)
+- event_members: eventId, userId, role (project-scoped role: LEAD or TEAM_MEMBER)
 - photos: id, eventId, uploadedBy, publicId, url, thumbnailUrl, filename, fileSize, isSelected
 - galleries: id, eventId, slug, title, pinHash, isPublished, publishedAt, viewCount
 - gallery_photos: galleryId, photoId, displayOrder
@@ -179,6 +179,7 @@ Tests cover role rules, gallery PIN verification, photo validation, and the cust
 - Gallery expiration is not yet implemented (optional bonus feature)
 - Email invitations are not sent - admin shares credentials manually after provisioning
 - Existing galleries created before encrypted PIN storage may need their PIN rotated from the event page
+- Apply the SQL in `supabase/migrations/202609090001_project_scoped_event_roles.sql` before using project-scoped lead/member assignments.
 
 ---
 

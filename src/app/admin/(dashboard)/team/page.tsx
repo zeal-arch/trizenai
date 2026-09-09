@@ -156,7 +156,11 @@ export default function TeamPage() {
         });
       }
 
-      toast.success(`Added ${data.user.fullName} to the team successfully!`);
+      if (data.existing) {
+        toast.info(data.message || `${data.user.fullName} is already on the team.`);
+      } else {
+        toast.success(`Added ${data.user.fullName} to the team successfully!`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error adding member";
       toast.error(msg);
