@@ -23,6 +23,7 @@ import { toast } from "sonner";
 
 interface GalleryItem {
   id: string;
+  eventId: string;
   title: string;
   eventTitle: string;
   slug: string;
@@ -60,6 +61,7 @@ export default function GalleriesPage() {
             setGalleries(
               data.galleries.map((g: any) => ({
                 id: g.id,
+                eventId: g.eventId,
                 title: g.title,
                 eventTitle: g.eventTitle || "Event Gallery",
                 slug: g.slug,
@@ -185,28 +187,30 @@ export default function GalleriesPage() {
                     </span>
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono text-sm font-bold tracking-widest text-primary">
-                        {isPinRevealed ? gallery.pin || "Unavailable" : "••••••"}
+                        {isPinRevealed ? gallery.pin || "Rotate to reveal" : "••••••"}
                       </span>
                       <button
                         type="button"
                         onClick={() => togglePinReveal(gallery.id)}
-                        className="p-1 text-dark-5 hover:text-dark dark:hover:text-white transition"
+                        className="p-1 text-dark-5 hover:text-dark dark:hover:text-white transition cursor-pointer"
                         title={isPinRevealed ? "Hide PIN" : "Reveal PIN"}
                       >
                         {isPinRevealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                       </button>
-                      <button
-                        type="button"
-                      onClick={() => copyPin(gallery.pin, gallery.id)}
-                        className="p-1 text-dark-5 hover:text-primary transition"
-                        title="Copy PIN"
-                      >
-                        {copiedPinId === gallery.id ? (
-                          <Check className="size-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="size-3.5" />
-                        )}
-                      </button>
+                      {gallery.pin && (
+                        <button
+                          type="button"
+                          onClick={() => copyPin(gallery.pin, gallery.id)}
+                          className="p-1 text-dark-5 hover:text-primary transition cursor-pointer"
+                          title="Copy PIN"
+                        >
+                          {copiedPinId === gallery.id ? (
+                            <Check className="size-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="size-3.5" />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-xs">
@@ -248,6 +252,20 @@ export default function GalleriesPage() {
                     </>
                   )}
                 </Button>
+
+                {gallery.eventId && (
+                  <Link href={`/admin/events/${gallery.eventId}/photos`}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-3 rounded-xl border-[#EBE8E3] dark:border-white/15 text-xs text-primary hover:bg-primary/10 gap-1.5"
+                      title="Edit gallery or rotate PIN"
+                    >
+                      <KeyRound className="size-3.5" />
+                      Rotate PIN
+                    </Button>
+                  </Link>
+                )}
 
                 <Link href={`/gallery/${gallery.slug}`} target="_blank">
                   <Button

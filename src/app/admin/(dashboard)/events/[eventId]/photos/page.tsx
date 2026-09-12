@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  RefreshCw,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/breadcrumb";
 import { Button } from "@/components/button";
@@ -353,25 +354,47 @@ export default function EventPhotosPage({
                 <KeyRound className="size-4 text-primary" />
                 <div className="flex flex-col">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-dark-5">Access PIN</span>
-                  <span className="font-mono text-xs font-bold tracking-widest text-primary">
-                    {showPin ? galleryPin || "Rotate PIN to reveal" : "••••••"}
-                  </span>
+                  {galleryPin ? (
+                    <span className="font-mono text-xs font-bold tracking-widest text-primary">
+                      {showPin ? galleryPin : "••••••"}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsPublishOpen(true)}
+                      className="font-mono text-[11px] font-bold text-primary hover:underline text-left cursor-pointer"
+                      title="Click to generate or set an access PIN"
+                    >
+                      {showPin ? "Click to Set PIN" : "••••••"}
+                    </button>
+                  )}
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowPin(!showPin)}
-                  className="ml-1 p-1 text-dark-5 hover:text-dark dark:hover:text-white transition"
+                  className="ml-1 p-1 text-dark-5 hover:text-dark dark:hover:text-white transition cursor-pointer"
                   title={showPin ? "Hide PIN" : "Show PIN"}
                 >
                   {showPin ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                 </button>
+                {galleryPin && (
+                  <button
+                    type="button"
+                    onClick={handleCopyPin}
+                    className="p-1 text-dark-5 hover:text-primary transition cursor-pointer"
+                    title="Copy PIN"
+                  >
+                    {copiedPin ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={handleCopyPin}
-                  className="p-1 text-dark-5 hover:text-primary transition"
-                  title="Copy PIN"
+                  onClick={() => setIsPublishOpen(true)}
+                  className="flex items-center gap-1 ml-1 px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold transition cursor-pointer"
+                  title="Rotate or update the client access PIN"
                 >
-                  {copiedPin ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
+                  <RefreshCw className="size-3" />
+                  <span>Rotate PIN</span>
                 </button>
               </div>
 
