@@ -161,17 +161,17 @@ export async function POST(
       savedGallery = data;
     }
 
-    // 2. Attach all selected event photos (isSelected = true) to gallery_photos
+    // 2. Attach selected event photos (isSelected = true) to gallery_photos
     const { data: selectedPhotos } = await supabase
       .from("photos")
       .select("id")
       .eq("eventId", eventId)
       .eq("isSelected", true);
 
-    // Clear old gallery photos and re-insert curated ones
-    await supabase.from("gallery_photos").delete().eq("galleryId", galleryId);
-
     if (selectedPhotos && selectedPhotos.length > 0) {
+      // Clear old gallery photos and re-insert curated ones
+      await supabase.from("gallery_photos").delete().eq("galleryId", galleryId);
+
       const galleryPhotoInserts = selectedPhotos.map((p, idx) => ({
         id: crypto.randomUUID(),
         galleryId,

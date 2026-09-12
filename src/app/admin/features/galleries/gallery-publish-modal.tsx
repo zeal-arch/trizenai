@@ -179,9 +179,11 @@ export function GalleryPublishModal({
           <form onSubmit={handlePublish} className="mt-4 space-y-4">
             {/* Stat Summary Box */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-primary/10 dark:bg-primary/20 border border-primary/20">
-              <span className="text-xs text-gray-600 dark:text-gray-300">Selected Photos for Publishing</span>
+              <span className="text-xs text-gray-600 dark:text-gray-300">
+                {initialGallery ? "Curated Gallery Photos" : "Selected Photos for Publishing"}
+              </span>
               <span className="text-sm font-bold text-primary">
-                {selectedCount} photos
+                {selectedCount > 0 ? `${selectedCount} selected` : initialGallery ? "Existing photos active" : "0 selected"}
               </span>
             </div>
 
@@ -251,7 +253,7 @@ export function GalleryPublishModal({
               </div>
               <p className="text-[11px] text-gray-400 dark:text-gray-500">
                 {initialGallery?.pin
-                  ? `Saved PIN: ${showPin ? initialGallery.pin : "••••••"} (encrypted at rest; leave blank to keep it unchanged).`
+                  ? `Current Saved PIN: ${showPin ? initialGallery.pin : "••••••"} (click Generate New or type a new PIN to rotate).`
                   : "The PIN is encrypted at rest and required for client access."}
               </p>
             </div>
@@ -269,18 +271,18 @@ export function GalleryPublishModal({
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || selectedCount === 0}
-                className="bg-primary hover:bg-primary/90 text-white flex items-center gap-2"
+                disabled={isSubmitting || (!initialGallery && !pin.trim())}
+                className="bg-primary hover:bg-primary/90 text-white flex items-center gap-2 cursor-pointer"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    <span>Publishing...</span>
+                    <span>Saving...</span>
                   </>
                 ) : (
                   <>
                     <Share2 className="size-4" />
-                    <span>Publish & Generate Link</span>
+                    <span>{initialGallery ? "Save & Update Gallery" : "Publish & Generate Link"}</span>
                   </>
                 )}
               </Button>

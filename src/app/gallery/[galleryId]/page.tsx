@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import { Loader2 } from "lucide-react";
 import { CustomerGalleryViewer } from "@/app/frontend/components/customer-gallery-viewer";
 import { playfair } from "@/lib/fonts";
@@ -33,6 +33,33 @@ export default function PublicGalleryPage({
   const [error, setError] = useState<string | null>(null);
   const [gallery, setGallery] = useState<GalleryData | null>(null);
 
+  // Auto-restore session in real-time if previously unlocked
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedPin = sessionStorage.getItem(`unlocked_pin_${galleryId}`);
+    if (storedPin) {
+      setPin(storedPin);
+      setIsVerifying(true);
+      fetch(`/api/gallery/${galleryId}/access`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: storedPin }),
+      })
+        .then(async (res) => {
+          if (res.ok) {
+            const data = await res.json();
+            setGallery(data.gallery);
+          } else {
+            // Stored PIN was rotated/changed; remove stale cached PIN
+            sessionStorage.removeItem(`unlocked_pin_${galleryId}`);
+            setPin("");
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsVerifying(false));
+    }
+  }, [galleryId]);
+
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin.trim()) return;
@@ -44,13 +71,18 @@ export default function PublicGalleryPage({
       const response = await fetch(`/api/gallery/${galleryId}/access`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ pin: pin.trim() }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || "Incorrect PIN or gallery unavailable.");
+      }
+
+      // Save valid PIN in session storage for current tab/session
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`unlocked_pin_${galleryId}`, pin.trim());
       }
 
       setGallery(data.gallery);
@@ -62,6 +94,14 @@ export default function PublicGalleryPage({
     }
   };
 
+  const handleLock = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(`unlocked_pin_${galleryId}`);
+    }
+    setGallery(null);
+    setPin("");
+  };
+
   if (gallery) {
     return (
       <CustomerGalleryViewer
@@ -69,7 +109,7 @@ export default function PublicGalleryPage({
         eventTitle={gallery.eventTitle}
         publishedAt={gallery.publishedAt}
         photos={gallery.photos}
-        onLockGallery={() => setGallery(null)}
+        onLockGallery={handleLock}
       />
     );
   }
