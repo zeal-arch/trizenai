@@ -20,6 +20,7 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Badge } from "@/components/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { authFetch } from "@/lib/api-client";
 import type { EventRole } from "@/types";
 import { toast } from "sonner";
 
@@ -49,7 +50,7 @@ export default function EventTeamPage({
   const loadEventTeam = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/events/${eventId}/team`);
+      const res = await authFetch(`/api/events/${eventId}/team`);
       if (res.status === 403) {
         toast.error("Only the lead for this project can manage its team.");
         router.replace("/admin/events");
@@ -86,7 +87,7 @@ export default function EventTeamPage({
 
     try {
       if (nextState) {
-        const res = await fetch(`/api/events/${eventId}/team`, {
+        const res = await authFetch(`/api/events/${eventId}/team`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: memberId, role: target.eventRole || "TEAM_MEMBER" }),
@@ -97,7 +98,7 @@ export default function EventTeamPage({
         }
         toast.success(`Assigned ${target.fullName} to this event.`);
       } else {
-        const res = await fetch(`/api/events/${eventId}/team?userId=${memberId}`, {
+        const res = await authFetch(`/api/events/${eventId}/team?userId=${memberId}`, {
           method: "DELETE",
         });
         if (!res.ok) {
@@ -126,7 +127,7 @@ export default function EventTeamPage({
     if (!target.isAssigned) return;
 
     try {
-      const res = await fetch(`/api/events/${eventId}/team`, {
+      const res = await authFetch(`/api/events/${eventId}/team`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: memberId, role: eventRole }),

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { getCurrentUserOrNull } from "@/lib/permissions/require-role";
 
 export const dynamic = "force-dynamic";
 
@@ -11,13 +11,13 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   try {
-    const authClient = await createServerClient();
-    const { data: { user: authUser }, error: authError } = await authClient.auth.getUser();
+    const current = await getCurrentUserOrNull();
 
-    if (authError || !authUser?.email) {
+    if (!current || !current.user?.email) {
       return NextResponse.json({ error: "Unauthorized: Authentication required." }, { status: 401 });
     }
 
+    const authUser = current.user;
     const supabase = createAdminClient();
     const { email, fullName, avatarUrl } = await req.json();
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "The sync email must match the authenticated account." }, { status: 403 });
     }
 
-    const name = fullName || authUser.user_metadata?.full_name || cleanEmail.split("@")[0] || "User";
+    const name = fullName || authUser.fullName || cleanEmail.split("@")[0] || "User";
 
     // 1. Check if user already exists
     const { data: existingUser } = await supabase
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Create new user record
-    const metadataRole = authUser.user_metadata?.role === "ADMIN" ? "ADMIN" : "TEAM_MEMBER";
+    const metadataRole = current.role === "ADMIN" ? "ADMIN" : "TEAM_MEMBER";
     const newUser = {
       id: authUser.id,
       email: cleanEmail,

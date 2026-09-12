@@ -18,6 +18,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { Button } from "@/components/button";
 import { Badge } from "@/components/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { authFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 
 interface GalleryItem {
@@ -52,7 +53,7 @@ export default function GalleriesPage() {
 
     async function loadGalleries() {
       try {
-        const res = await fetch("/api/galleries");
+        const res = await authFetch("/api/galleries");
         if (res.ok) {
           const data = await res.json();
           if (data.galleries && data.galleries.length > 0) {

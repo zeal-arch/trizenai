@@ -1,0 +1,882 @@
+{
+	"info": {
+		"_postman_id": "9b1784c0-3e4b-4b47-8a3a-9774677717bc",
+		"name": "TrizenAI API Collection",
+		"description": "Complete API testing suite for TrizenAI Photo Sharing Platform.\nIncludes all Auth, Events, Photos, Curation, Team, Gallery, and Upload endpoints.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{auth_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "0. Authentication & Tokens",
+			"item": [
+				{
+					"name": "Supabase Login (Get Bearer Token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.access_token) {",
+									"    pm.environment.set('auth_token', response.access_token);",
+									"    pm.collectionVariables.set('auth_token', response.access_token);",
+									"    console.log('✅ Bearer token successfully extracted and saved to environment/collection variables.');",
+									"}",
+									"pm.test('Status is 200 OK', function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "apikey",
+								"value": "{{supabase_anon_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{supabase_url}}/auth/v1/token?grant_type=password",
+							"host": [
+								"{{supabase_url}}"
+							],
+							"path": [
+								"auth",
+								"v1",
+								"token"
+							],
+							"query": [
+								{
+									"key": "grant_type",
+									"value": "password"
+								}
+							]
+						},
+						"description": "Signs in directly with Supabase Auth to retrieve a JWT access token and automatically set `auth_token` for all subsequent requests."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/auth/register",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"testuser@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"fullName\": \"Test Photographer\",\n  \"role\": \"TEAM_MEMBER\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
+						},
+						"description": "Registers a user directly in Supabase Auth & public.users table."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/auth/sync",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"fullName\": \"Admin User\",\n  \"avatarUrl\": \"/image/user/user-01.png\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/sync",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"sync"
+							]
+						},
+						"description": "Syncs the authenticated user into PostgreSQL public.users."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "1. Team Management",
+			"item": [
+				{
+					"name": "GET /api/team (List Team Members)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/team",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"team"
+							]
+						},
+						"description": "Lists all team members, their assigned events count, uploaded photos count, and roles (Admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/team (Add Team Member)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.user && response.user.id) {",
+									"    pm.environment.set('target_user_id', response.user.id);",
+									"    pm.collectionVariables.set('target_user_id', response.user.id);",
+									"    console.log('✅ Saved target_user_id:', response.user.id);",
+									"}",
+									"pm.test('Team member added/updated successfully', function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Alex Rivera\",\n  \"email\": \"alex.rivera@example.com\",\n  \"role\": \"TEAM_MEMBER\",\n  \"avatarUrl\": \"/image/user/user-02.png\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/team",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"team"
+							]
+						},
+						"description": "Creates or reuses a team member account with auto-generated temporary password."
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE /api/team (Delete Team Member)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/team?userId={{target_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"team"
+							],
+							"query": [
+								{
+									"key": "userId",
+									"value": "{{target_user_id}}"
+								}
+							]
+						},
+						"description": "Deletes a team member account from database and auth (Admin only)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Events Management",
+			"item": [
+				{
+					"name": "GET /api/events (List Events)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events"
+							]
+						},
+						"description": "Lists events (Admins see all; Team members see assigned events)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/events (Create Event)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.event && response.event.id) {",
+									"    pm.environment.set('event_id', response.event.id);",
+									"    pm.collectionVariables.set('event_id', response.event.id);",
+									"    console.log('✅ Saved event_id:', response.event.id);",
+									"}",
+									"pm.test('Event created successfully', function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Grand Gala 2026\",\n  \"description\": \"Annual corporate summit & banquet photography\",\n  \"date\": \"2026-11-20T18:00:00.000Z\",\n  \"location\": \"Metropolitan Ballroom, NY\",\n  \"coverImage\": \"/image/cover/cover-01.png\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events"
+							]
+						},
+						"description": "Creates a new event project (Admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "GET /api/events/[eventId] (Get Event Details)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}"
+							]
+						},
+						"description": "Retrieves detailed event info, attached photos, and gallery metadata."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH /api/events/[eventId] (Update Event)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Grand Gala 2026 (Updated)\",\n  \"description\": \"Updated description and venue details\",\n  \"location\": \"Grand Ballroom Suite A\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}"
+							]
+						},
+						"description": "Updates event metadata (Admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE /api/events/[eventId] (Delete Event)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}"
+							]
+						},
+						"description": "Deletes event and cascades all photos, members, and galleries (Admin only)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Event Team Assignments",
+			"item": [
+				{
+					"name": "GET /api/events/[eventId]/team (List Event Members)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/team",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"team"
+							]
+						},
+						"description": "Lists all users with their assignment status for the given event (Admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/events/[eventId]/team (Assign Member)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{target_user_id}}\",\n  \"role\": \"TEAM_MEMBER\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/team",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"team"
+							]
+						},
+						"description": "Assigns a team member or lead to an event (Admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE /api/events/[eventId]/team (Unassign Member)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/team?userId={{target_user_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"team"
+							],
+							"query": [
+								{
+									"key": "userId",
+									"value": "{{target_user_id}}"
+								}
+							]
+						},
+						"description": "Removes a team member assignment from the event (Admin only)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Photos & Curation",
+			"item": [
+				{
+					"name": "GET /api/events/[eventId]/photos (All Photos)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/photos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"photos"
+							]
+						},
+						"description": "Lists all photos in an event."
+					},
+					"response": []
+				},
+				{
+					"name": "GET /api/events/[eventId]/photos (Selected/Curated Only)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/photos?selected=true",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"photos"
+							],
+							"query": [
+								{
+									"key": "selected",
+									"value": "true"
+								}
+							]
+						},
+						"description": "Lists only curated/selected photos for this event."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/events/[eventId]/photos (Save Uploaded Metadata)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.photos && response.photos.length > 0) {",
+									"    pm.environment.set('photo_id', response.photos[0].id);",
+									"    pm.collectionVariables.set('photo_id', response.photos[0].id);",
+									"    console.log('✅ Saved photo_id:', response.photos[0].id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"photos\": [\n    {\n      \"publicId\": \"trizenai-events/sample-photo-1\",\n      \"secureUrl\": \"https://res.cloudinary.com/demo/image/upload/sample.jpg\",\n      \"thumbnailUrl\": \"https://res.cloudinary.com/demo/image/upload/c_thumb,w_400/sample.jpg\",\n      \"filename\": \"sample.jpg\",\n      \"fileSize\": 245000,\n      \"width\": 1920,\n      \"height\": 1080,\n      \"tags\": [\"highlight\", \"stage\"]\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/photos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"photos"
+							]
+						},
+						"description": "Persists Cloudinary photo metadata records to the database for an event."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH /api/events/[eventId]/photos (Curate / Select Specific Photos)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"photoIds\": [\"{{photo_id}}\"],\n  \"isSelected\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/photos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"photos"
+							]
+						},
+						"description": "Marks specific photo IDs as selected or unselected for customer gallery curation (Admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH /api/events/[eventId]/photos (Select All Photos)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"selectAll\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/photos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"photos"
+							]
+						},
+						"description": "Selects all photos in the event for gallery publishing."
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE /api/events/[eventId]/photos (Delete Photos)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"photoIds\": [\"{{photo_id}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/photos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"photos"
+							]
+						},
+						"description": "Deletes photos from database and cleans up Cloudinary assets."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Customer Galleries & PIN Access",
+			"item": [
+				{
+					"name": "GET /api/galleries (List All Customer Galleries)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/galleries",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"galleries"
+							]
+						},
+						"description": "Lists all published and draft customer galleries (Admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "GET /api/events/[eventId]/gallery (Get Event Gallery)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/gallery",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"gallery"
+							]
+						},
+						"description": "Gets the gallery settings and PIN for a specific event."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/events/[eventId]/gallery (Create or Publish Gallery)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.gallery) {",
+									"    if (response.gallery.slug) {",
+									"        pm.environment.set('gallery_slug', response.gallery.slug);",
+									"        pm.collectionVariables.set('gallery_slug', response.gallery.slug);",
+									"    }",
+									"    if (response.gallery.id) {",
+									"        pm.environment.set('gallery_id', response.gallery.id);",
+									"        pm.collectionVariables.set('gallery_id', response.gallery.id);",
+									"    }",
+									"    console.log('✅ Saved gallery slug & ID:', response.gallery.slug, response.gallery.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Grand Gala Customer Gallery\",\n  \"slug\": \"grand-gala-2026\",\n  \"pin\": \"5829\",\n  \"isPublished\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/gallery",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"gallery"
+							]
+						},
+						"description": "Publishes curated photos to a secure, PIN-protected public customer gallery (Admin only)."
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/gallery/[galleryId]/access (Customer PIN Verification)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"pin\": \"5829\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/gallery/{{gallery_slug}}/access",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"gallery",
+								"{{gallery_slug}}",
+								"access"
+							]
+						},
+						"description": "Public client endpoint. Customers provide the 4-6 digit PIN to access full high-resolution curated gallery photos."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Direct Media Upload",
+			"item": [
+				{
+					"name": "POST /api/upload (Multipart Photo Upload)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "eventId",
+									"value": "{{event_id}}",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": ""
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/upload",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"upload"
+							]
+						},
+						"description": "Direct server-side multipart/form-data upload to Cloudinary with max 15MB size enforcement."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "supabase_url",
+			"value": "https://gzswumjsumexdoedmvot.supabase.co",
+			"type": "string"
+		},
+		{
+			"key": "supabase_anon_key",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_email",
+			"value": "admin@example.com",
+			"type": "string"
+		},
+		{
+			"key": "admin_password",
+			"value": "Password123!",
+			"type": "string"
+		},
+		{
+			"key": "event_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "target_user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "photo_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "gallery_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "gallery_slug",
+			"value": "grand-gala-2026",
+			"type": "string"
+		}
+	]
+}

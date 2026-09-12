@@ -19,6 +19,7 @@ import { Input } from "@/components/input";
 import { Label } from "@/components/label";
 import { Textarea } from "@/components/textarea";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { authFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 import { LocalPhotoUploader, LocalPhotoItem } from "./_components/local-photo-uploader";
 
@@ -56,7 +57,7 @@ export default function CreateEventPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !date) {
+    if (!title || !date) {
       toast.error("Please provide an event title and date.");
       return;
     }
@@ -66,7 +67,7 @@ export default function CreateEventPage() {
       const fullDateTime = time ? `${date}T${time}:00` : `${date}T00:00:00`;
       const initialCover = "/image/cover/cover-01.png";
 
-      const res = await fetch("/api/events", {
+      const res = await authFetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -97,7 +98,7 @@ export default function CreateEventPage() {
             formData.append("file", localPhoto.file);
             formData.append("eventId", newEventId);
 
-            const uploadRes = await fetch("/api/upload", {
+            const uploadRes = await authFetch("/api/upload", {
               method: "POST",
               body: formData,
             });
@@ -109,7 +110,7 @@ export default function CreateEventPage() {
                 finalCoverUrl = uploadData.asset.secureUrl;
               }
 
-              await fetch(`/api/events/${newEventId}/photos`, {
+              await authFetch(`/api/events/${newEventId}/photos`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -137,7 +138,7 @@ export default function CreateEventPage() {
 
         // Update event with the real uploaded Cloudinary cover image
         if (finalCoverUrl) {
-          await fetch(`/api/events/${newEventId}`, {
+          await authFetch(`/api/events/${newEventId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ coverImage: finalCoverUrl }),

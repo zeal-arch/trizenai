@@ -19,6 +19,7 @@ import { Breadcrumb } from "@/components/breadcrumb";
 import { Button } from "@/components/button";
 import { Badge } from "@/components/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { authFetch } from "@/lib/api-client";
 
 interface DashboardStats {
   totalEvents: number;
@@ -39,7 +40,7 @@ interface RecentEvent {
   gallerySlug?: string;
 }
 
-export default function AdminDashboardPage() {
+export default function Dashboard() {
   const router = useRouter();
   const { isTeamMember, loading: authLoading } = useCurrentUser();
 
@@ -63,7 +64,7 @@ export default function AdminDashboardPage() {
     async function fetchDashboardData() {
       try {
         setLoadingData(true);
-        const res = await fetch("/api/events");
+        const res = await authFetch("/api/events");
         if (res.ok) {
           const data = await res.json();
           const events: RecentEvent[] = (data.events || []).map((e: {

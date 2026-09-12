@@ -28,6 +28,7 @@ import { PhotoGrid } from "@/app/admin/features/photos/photo-grid";
 import { BulkUploadModal } from "@/app/admin/features/photos/bulk-upload-modal";
 import { GalleryPublishModal } from "@/app/admin/features/galleries/gallery-publish-modal";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { authFetch } from "@/lib/api-client";
 import type { EventRole, PhotoItem } from "@/types";
 import { toast } from "sonner";
 
@@ -66,7 +67,7 @@ export default function EventPhotosPage({
     try {
       setLoadingPhotos(true);
       // 1. Fetch Event Info
-      const eventRes = await fetch(`/api/events/${eventId}`);
+      const eventRes = await authFetch(`/api/events/${eventId}`);
       if (eventRes.status === 403) {
         toast.error("Access Denied: You are not assigned to this event.");
         router.replace("/admin/events");
@@ -94,7 +95,7 @@ export default function EventPhotosPage({
       }
 
       // 2. Fetch Photos
-      const photosRes = await fetch(`/api/events/${eventId}/photos`);
+      const photosRes = await authFetch(`/api/events/${eventId}/photos`);
       if (photosRes.status === 403) {
         toast.error("Access Denied: You are not assigned to this event.");
         router.replace("/admin/events");
@@ -147,7 +148,7 @@ export default function EventPhotosPage({
     );
 
     try {
-      const res = await fetch(`/api/events/${eventId}/photos`, {
+      const res = await authFetch(`/api/events/${eventId}/photos`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -186,7 +187,7 @@ export default function EventPhotosPage({
     }
 
     try {
-      const res = await fetch(`/api/events/${eventId}/photos`, {
+      const res = await authFetch(`/api/events/${eventId}/photos`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

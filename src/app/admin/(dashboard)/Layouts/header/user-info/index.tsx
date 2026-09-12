@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { SmartImage } from "@/components/ui/SmartImage";
+import { authFetch } from "@/lib/api-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -80,7 +81,7 @@ export function UserInfo() {
           sessionStorage.setItem("admin_user_profile", JSON.stringify(newUserData));
 
           // Sync authenticated user (including Google OAuth users) to public.users
-          fetch("/api/auth/sync", {
+          authFetch("/api/auth/sync", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { EventRole, UserRole } from '@/types';
@@ -16,46 +17,83 @@ export interface RoleGuardSuccess {
 
 /**
  * Gets the current authenticated user and their role, or returns null if not authenticated.
+ * Supports both cookie-based sessions (Next.js App Router) and Bearer token Authorization headers.
  */
 export async function getCurrentUserOrNull(): Promise<RoleGuardSuccess | null> {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
+    let authUser: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null = null;
 
-    if (error || !user || !user.email) {
+    // 1. Try reading user from cookies via createClient()
+    try {
+      const supabase = await createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (!error && user && user.email) {
+        authUser = user;
+      }
+    } catch (cookieErr) {
+      console.warn('[getCurrentUserOrNull] Cookie auth extraction error:', cookieErr);
+    }
+
+    // 2. If cookie session not found, check for Authorization: Bearer <token> header
+    if (!authUser) {
+      try {
+        const headerList = await headers();
+        const authHeader = headerList.get('authorization') || headerList.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          const token = authHeader.substring(7).trim();
+          if (token) {
+            const adminSupabase = createAdminClient();
+            const { data: { user }, error } = await adminSupabase.auth.getUser(token);
+            if (!error && user && user.email) {
+              authUser = user;
+            }
+          }
+        }
+      } catch (headerErr) {
+        console.warn('[getCurrentUserOrNull] Header auth extraction error:', headerErr);
+      }
+    }
+
+    if (!authUser || !authUser.email) {
       return null;
     }
 
-    const adminSupabase = createAdminClient();
-    const { data: dbUser } = await adminSupabase
-      .from('users')
-      .select('id, email, fullName, role')
-      .or(`id.eq.${user.id},email.eq.${user.email.toLowerCase().trim()}`)
-      .maybeSingle();
+    // 3. Query public.users to get the authoritative role from database
+    try {
+      const adminSupabase = createAdminClient();
+      const { data: dbUser, error: dbError } = await adminSupabase
+        .from('users')
+        .select('id, email, fullName, role')
+        .or(`id.eq.${authUser.id},email.eq.${authUser.email.toLowerCase().trim()}`)
+        .maybeSingle();
 
-    if (dbUser) {
-      return {
-        user: {
-          id: dbUser.id,
-          authId: user.id,
-          email: dbUser.email,
-          fullName: dbUser.fullName,
-        },
-        role: (dbUser.role as UserRole) || 'TEAM_MEMBER',
-      };
+      if (!dbError && dbUser) {
+        return {
+          user: {
+            id: dbUser.id,
+            authId: authUser.id,
+            email: dbUser.email,
+            fullName: dbUser.fullName,
+          },
+          role: (dbUser.role as UserRole) || 'TEAM_MEMBER',
+        };
+      }
+    } catch (dbErr) {
+      console.warn('[getCurrentUserOrNull] DB role query failed, falling back to metadata:', dbErr);
     }
 
-    // Fallback to metadata
-    const metaRole = (user.user_metadata?.role as UserRole) || 'TEAM_MEMBER';
+    // 4. Fallback to user_metadata role
+    const metaRole = (authUser.user_metadata?.role as UserRole) || 'TEAM_MEMBER';
     return {
       user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.user_metadata?.full_name || user.email.split('@')[0],
+        id: authUser.id,
+        email: authUser.email,
+        fullName: (authUser.user_metadata?.full_name as string) || authUser.email.split('@')[0],
       },
       role: metaRole,
     };
-  } catch {
+  } catch (err) {
+    console.error('[getCurrentUserOrNull] Unexpected error:', err);
     return null;
   }
 }
@@ -163,4 +201,3 @@ export async function requireEventRole(
 
   return current;
 }
-

@@ -6,6 +6,7 @@ import { Button } from "@/components/button";
 import { Loader2, UploadCloud, X, CheckCircle2, AlertCircle, FileImage } from "lucide-react";
 import { formatBytes } from "./photo-card";
 import { validateFile, type CloudinaryUploadResult } from "@/lib/cloudinary";
+import { authFetch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -65,17 +66,13 @@ export function BulkUploadModal({
     handleFileSelect(e.dataTransfer.files);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-  }, []);
+  };
 
   const removeFile = (index: number) => {
-    setFiles((prev) => {
-      const target = prev[index];
-      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
-      return prev.filter((_, i) => i !== index);
-    });
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const startUpload = async () => {
@@ -96,7 +93,7 @@ export function BulkUploadModal({
           formData.append("file", item.file);
           formData.append("eventId", eventId);
 
-          const uploadRes = await fetch("/api/upload", {
+          const uploadRes = await authFetch("/api/upload", {
             method: "POST",
             body: formData,
           });
@@ -114,7 +111,7 @@ export function BulkUploadModal({
           );
 
           // 2. Register photo metadata in Supabase database
-          await fetch(`/api/events/${eventId}/photos`, {
+          await authFetch(`/api/events/${eventId}/photos`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

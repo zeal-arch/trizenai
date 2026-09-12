@@ -6,6 +6,7 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Label } from "@/components/label";
 import { KeyRound, Share2, Copy, Check, RefreshCw, Loader2, Globe, Eye, EyeOff } from "lucide-react";
+import { authFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 
 interface GalleryPublishModalProps {
@@ -79,7 +80,7 @@ export function GalleryPublishModal({
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/events/${eventId}/gallery`, {
+      const response = await authFetch(`/api/events/${eventId}/gallery`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

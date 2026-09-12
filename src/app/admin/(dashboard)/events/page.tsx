@@ -18,6 +18,7 @@ import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Badge } from "@/components/badge";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { authFetch } from "@/lib/api-client";
 import type { EventRole } from "@/types";
 
 interface EventItem {
@@ -45,7 +46,7 @@ export default function EventsPage() {
     async function loadEvents() {
       try {
         setLoading(true);
-        const res = await fetch("/api/events");
+        const res = await authFetch("/api/events");
         if (res.ok) {
           const data = await res.json();
           if (data.events) {

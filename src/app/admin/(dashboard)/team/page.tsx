@@ -24,6 +24,7 @@ import { Badge } from "@/components/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/dialog";
 import { ConfirmDialog } from "@/app/admin/components/ConfirmDialog";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { authFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -78,7 +79,7 @@ export default function TeamPage() {
 
   const loadTeam = async () => {
     try {
-      const res = await fetch("/api/team");
+      const res = await authFetch("/api/team");
       if (res.ok) {
         const data = await res.json();
         if (data.team && data.team.length > 0) {
@@ -121,7 +122,7 @@ export default function TeamPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/team", {
+      const res = await authFetch("/api/team", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -187,7 +188,7 @@ export default function TeamPage() {
 
     const targetName = userToDelete.fullName;
     try {
-      const res = await fetch(`/api/team?userId=${userToDelete.id}`, {
+      const res = await authFetch(`/api/team?userId=${userToDelete.id}`, {
         method: "DELETE",
       });
 
